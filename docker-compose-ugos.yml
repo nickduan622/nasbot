@@ -1,0 +1,107 @@
+services:
+  # ============ 下载客户端 ============
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbit-pt
+    environment:
+      - PUID=1000
+      - PGID=10
+      - TZ=Asia/Shanghai
+      - WEBUI_PORT=8092
+    volumes:
+      - /volume1/docker/my-nas-pt-media/qbittorrent:/config
+      - /volume1/Media-PT:/media
+    ports:
+      - "8092:8092"
+      - "6882:6881"
+      - "6882:6881/udp"
+    restart: unless-stopped
+
+  # ============ 索引搜索 ============
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=1000
+      - PGID=10
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/my-nas-pt-media/prowlarr:/config
+    ports:
+      - "9696:9696"
+    restart: unless-stopped
+
+  # Cloudflare 反爬绕过（公开站需要）
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    environment:
+      - TZ=Asia/Shanghai
+    ports:
+      - "8191:8191"
+    restart: unless-stopped
+
+  # ============ 电影管理 ============
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=1000
+      - PGID=10
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/my-nas-pt-media/radarr:/config
+      - /volume1/Media-PT:/media
+    ports:
+      - "7878:7878"
+    restart: unless-stopped
+
+  # ============ 剧集管理 ============
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    environment:
+      - PUID=1000
+      - PGID=10
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/my-nas-pt-media/sonarr:/config
+      - /volume1/Media-PT:/media
+    ports:
+      - "8989:8989"
+    restart: unless-stopped
+
+  # ============ 中文字幕 ============
+  chinesesubfinder:
+    image: allanpk716/chinesesubfinder:latest
+    container_name: chinesesubfinder
+    environment:
+      - PUID=1000
+      - PGID=10
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/my-nas-pt-media/chinesesubfinder:/config
+      - /volume1/Media-PT/movies:/media/movies
+      - /volume1/Media-PT/tv:/media/tv
+    ports:
+      - "19035:19035"
+    restart: unless-stopped
+
+  # ============ Telegram Bot ============
+  nasbot:
+    image: python:3.12-slim
+    container_name: nasbot
+    env_file:
+      - /volume1/docker/my-nas-pt-media/nasbot/.env
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /volume1/docker/my-nas-pt-media/nasbot:/app/data
+      - /volume1/Media-PT:/media
+    working_dir: /app
+    command: ["python", "main.py"]
+    restart: unless-stopped
+
+networks:
+  default:
+    name: my-nas-pt-media
