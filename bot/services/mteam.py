@@ -53,7 +53,7 @@ async def search_free_torrents(
 ) -> list[dict]:
     """Search for Free/2xFree torrents on M-Team."""
     results = []
-    for discount in ["FREE", "2XFREE"]:
+    for discount in ["FREE", "2XFREE", "_2X_FREE"]:
         body = {
             "mode": "normal",
             "visible": 1,
@@ -67,20 +67,38 @@ async def search_free_torrents(
             body["categories"] = categories
 
         data = await _request("POST", "/api/torrent/search", body)
-        if not data or "data" not in data:
+        if not data:
+            log.warning("M-Team search returned None for discount=%s", discount)
+            continue
+
+        log.info("M-Team search discount=%s response keys=%s", discount, list(data.keys()) if isinstance(data, dict) else type(data))
+
+        if "data" not in data:
+            log.warning("M-Team search no 'data' key, full response: %s", str(data)[:500])
             continue
 
         torrents_data = data["data"]
+        log.info("M-Team torrents_data type=%s keys=%s", type(torrents_data).__name__, list(torrents_data.keys()) if isinstance(torrents_data, dict) else f"len={len(torrents_data)}" if isinstance(torrents_data, list) else "?")
+
         # Handle both list and paginated response
         torrent_list = torrents_data if isinstance(torrents_data, list) else torrents_data.get("data", [])
 
+        if torrent_list:
+            log.info("M-Team first torrent sample: %s", str(torrent_list[0])[:500])
+
         for t in torrent_list:
+            # Try multiple possible field names for size/seeders/leechers
+            size = int(t.get("size", 0) or 0)
+            status = t.get("status", {}) or {}
+            seeders = int(status.get("seeders", 0) if isinstance(status, dict) else 0)
+            leechers = int(status.get("leechers", 0) if isinstance(status, dict) else 0)
+
             results.append({
                 "id": str(t.get("id", "")),
-                "name": t.get("name", ""),
-                "size": int(t.get("size", 0)),
-                "seeders": int(t.get("status", {}).get("seeders", 0)),
-                "leechers": int(t.get("status", {}).get("leechers", 0)),
+                "name": t.get("name", t.get("title", "")),
+                "size": size,
+                "seeders": seeders,
+                "leechers": leechers,
                 "discount": discount,
                 "category": t.get("category", ""),
                 "created": t.get("createdDate", ""),
