@@ -48,6 +48,17 @@ async def farm_scan_job():
         log.error("Farm scan error: %s", e)
 
 
+async def ratio_protect_job():
+    """Check every 5 min: remove downloading torrents whose Free expired."""
+    try:
+        protected = await farmer.protect_ratio()
+        if protected:
+            names = "\n".join(f"  • {n[:60]}" for n in protected)
+            await _send(f"🛡️ 分享率保护：已移除 {len(protected)} 个 Free 过期但未下完的种子：\n{names}")
+    except Exception as e:
+        log.error("Ratio protect error: %s", e)
+
+
 async def download_monitor_job():
     """Check for completed downloads and notify."""
     try:
@@ -151,6 +162,9 @@ def setup_scheduler(bot, chat_id: str) -> AsyncIOScheduler:
 
     # Farm scan: every FARM_SCAN_INTERVAL minutes
     scheduler.add_job(farm_scan_job, "interval", minutes=config.FARM_SCAN_INTERVAL, id="farm_scan")
+
+    # Ratio protection: every 5 minutes — remove expired Free torrents still downloading
+    scheduler.add_job(ratio_protect_job, "interval", minutes=5, id="ratio_protect")
 
     # Download monitor: every 2 minutes
     scheduler.add_job(download_monitor_job, "interval", minutes=2, id="download_monitor")
