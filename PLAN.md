@@ -1,61 +1,61 @@
-# 部署方案 & 执行计划
+# 项目状态 & 后续 TODO
 
-## 系统架构
+> 上次更新: 2026-03-26
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Telegram Bot（自定义 Python 服务）                           │
-│                                                             │
-│  功能 1: /search 盗梦空间  → 搜索+选择+下载+通知             │
-│  功能 2: /status           → 查询下载状态 + M-Team 分享率    │
-│  功能 3: 自动养号           → 定时抓 Free 种子做种           │
-│  功能 4: 生命周期通知       → 下载开始/进度/完成 自动推送     │
-├─────────────────────────────────────────────────────────────┤
-│                          ↕ API 调用                         │
-├──────────┬──────────┬───────────┬──────────┬────────────────┤
-│ Radarr   │ Sonarr   │ Prowlarr  │ qBit     │ ChineseSub     │
-│ 电影管理  │ 剧集管理  │ 索引聚合   │ BT下载   │ Finder 字幕    │
-│ :7878    │ :8989    │ :9696     │ :8092    │ :19035         │
-├──────────┴──────────┴───────────┴──────────┴────────────────┤
-│                    Docker Network: my-nas-pt-media           │
-├─────────────────────────────────────────────────────────────┤
-│  /volume1/Media-PT/                                         │
-│  ├── movies/        ← 电影库（绑定到影视中心）                │
-│  ├── tv/            ← 剧集库（绑定到影视中心）                │
-│  └── downloads/     ← 下载区                                │
-│      ├── movies/    ← Radarr 下载（硬链接到 movies/）        │
-│      ├── tv/        ← Sonarr 下载（硬链接到 tv/）            │
-│      └── seed/      ← 养号专用（不进媒体库）                  │
-└─────────────────────────────────────────────────────────────┘
-```
+## 当前状态
 
-## 执行进度
+### 已完成
+- [x] Docker Compose 部署 8 个服务 (qBit, Prowlarr, Radarr, Sonarr, ChineseSubFinder, FlareSolverr, Clash, nasbot)
+- [x] qBittorrent PT 优化配置 (关 DHT/PeX/LSD/匿名, 端口 55000)
+- [x] Prowlarr → M-Team 索引器 + 同步到 Radarr/Sonarr
+- [x] Radarr/Sonarr 下载客户端 + 根目录 + 质量策略 (4K > 1080p)
+- [x] Clash 代理 (仅 Telegram 流量)
+- [x] Telegram Bot 核心: /movie, /tv, /status, /ratio, /downloads, /farm
+- [x] 自动养号: 扫描 Free 种子 → 下载 → 做种 → 保护 → 清理
+- [x] 分享率保护: 每 5 分钟检查, Free 过期未下完自动删除
+- [x] 生命周期通知: 下载进度/完成/日报/分享率预警
+- [x] GitHub 仓库 + 更新脚本 (ghfast.top 镜像)
+- [x] M-Team 账号注册 (bignickeye, 2026-03-25), 2FA 已开
 
-### Phase 1：基础设施 ✅ 已完成
-- [x] NAS 信息收集（IP、Docker、路径）
-- [x] docker-compose 编写 & 部署 6 个服务
-- [x] qBittorrent 配置（PT 优化：关 DHT/PeX/LSD/匿名模式）
-- [x] Prowlarr 配置 → 对接 M-Team + qBittorrent
-- [x] Prowlarr → Radarr/Sonarr Apps 同步
-- [x] Radarr 配置 → 下载客户端 + 根目录 + 质量策略
-- [x] Sonarr 配置 → 下载客户端 + 根目录 + 质量策略
+### 运行中
+- 自动养号 Bot 24/7 运行中, 每 15 分钟扫描, 上限 50 种子 / 500GB
+- M-Team 新手考核中 (截止 ~2026-04-22), 条件三选一: 上传 > 20GB / 下载 > 15GB / 魔力值 > 4500
+- 4 月 1 日全站 Free 活动 3 天 — 关键养号窗口
 
-### Phase 2：养号（4月1日前）⬅️ 当前
-- [x] M-Team 账号注册 + 存取令牌获取
-- [ ] 手动下载 Free 种子做种（当前在做）
-- [ ] 4月1日全站 Free 活动，集中下载刷上传量
-- [ ] 路由器端口转发 6882（回家后配）
+## 后续 TODO
 
-### Phase 3：自定义 Telegram Bot 🔜
-- [ ] 开发 Bot 核心框架（Python + python-telegram-bot）
-- [ ] 功能：/search — 搜索影视并下载
-- [ ] 功能：/status — 查询下载进度 + M-Team 账户状态
-- [ ] 功能：生命周期通知（下载开始 → 进度 → 完成 → 字幕就绪）
-- [ ] 功能：自动养号（定时抓取 Free 种子、管理做种、清理达标资源）
-- [ ] Docker 化部署到 NAS
+### 高优先级 (下次 session)
+- [ ] 测试 `/movie` 搜索下载电影 (端到端)
+- [ ] 测试 `/tv` 搜索下载剧集 (端到端)
+- [ ] 测试 `/status` 综合面板
+- [ ] 配置 ChineseSubFinder (`http://NAS_IP:19035`)
+- [ ] 绿联影视中心绑定 `/volume1/Media-PT/movies` 和 `/volume1/Media-PT/tv`
+- [ ] 端到端验证: TG 发名字 → 下载 → 字幕匹配 → 影视中心可播放
 
-### Phase 4：打磨
-- [ ] ChineseSubFinder 配置 & 测试
-- [ ] 绿联影视中心绑定新媒体库
-- [ ] 端到端测试：TG 发消息 → 下载 → 字幕 → 通知 → 播放
-- [ ] 旧资源迁移脚本（从 /volume1/Media/ 迁移到新库）
+### 中优先级
+- [ ] 路由器端口转发 55000 (提升做种连接性, 中国移动光猫可能需要超级管理员)
+- [ ] 旧资源迁移脚本 (从 `/volume1/Media/Movies` 迁移到新库, 重命名+字幕)
+- [ ] Bot 代码更新流程优化 (当前: update.sh + 手动重启容器)
+
+### 低优先级 / 后续增强
+- [ ] 4 月 1 日全站 Free 活动策略 (可能需要临时调大参数)
+- [ ] Radarr/Sonarr 下载时的分享率保护 (非 Free 种子风险)
+- [ ] 部署 Jellyfin/Emby 替代绿联影视中心
+- [ ] cross-seed 跨站做种 (如果有多个 PT 站)
+
+## 关键配置速查
+
+| 项目 | 值 |
+|------|-----|
+| NAS IP | 192.168.1.187 |
+| Docker 项目 | my-nas-pt-media |
+| Compose 路径 | /volume1/docker/my-nas-pt-media/docker-compose.yaml |
+| 媒体根目录 | /volume1/Media-PT/ |
+| Bot 代码 | /volume1/docker/my-nas-pt-media/nasbot/code/bot/ |
+| Bot .env | /volume1/docker/my-nas-pt-media/nasbot/.env |
+| Clash 配置 | /volume1/docker/my-nas-pt-media/clash/config.yaml |
+| GitHub | github.com/nickduan622/nasbot |
+| 更新脚本 | /volume1/docker/my-nas-pt-media/nasbot/update.sh |
+| qBit 端口 | WebUI 8092, BT 55000 |
+| M-Team 用户 | bignickeye |
+| M-Team 考核截止 | ~2026-04-22 |

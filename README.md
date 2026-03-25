@@ -193,12 +193,11 @@ EOF
 ## 更新 Bot 代码
 
 ```bash
-cd /volume1/docker/my-nas-pt-media/nasbot
-rm -rf code
-wget https://github.com/nickduan622/nasbot/archive/refs/heads/main.tar.gz -O nasbot.tar.gz
-tar xzf nasbot.tar.gz && mv nasbot-main code && rm nasbot.tar.gz
+/volume1/docker/my-nas-pt-media/nasbot/update.sh
 # 然后在绿联 Docker UI 重启 nasbot 容器
 ```
+
+> update.sh 使用 ghfast.top 镜像加速 GitHub 下载 (中国大陆)
 
 ## M-Team 养号策略
 
