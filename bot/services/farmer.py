@@ -57,6 +57,12 @@ async def scan_and_download() -> list[str]:
         state["grabbed"] = grabbed
     added = []
 
+    # Check torrent count limit
+    current_torrents = await qbit.qbit.get_torrents(category="seed")
+    if len(current_torrents) >= config.FARM_MAX_TORRENTS:
+        log.info("Farm torrent limit reached: %d / %d", len(current_torrents), config.FARM_MAX_TORRENTS)
+        return added
+
     disk_gb = _get_seed_disk_usage_gb()
     if disk_gb >= config.FARM_MAX_DISK_GB:
         log.info("Farm disk limit reached: %.1f / %d GB", disk_gb, config.FARM_MAX_DISK_GB)
