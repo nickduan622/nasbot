@@ -93,12 +93,11 @@ def main():
 
     log.info("Starting NAS PT Media Bot...")
 
-    app = (
-        ApplicationBuilder()
-        .token(config.TG_BOT_TOKEN)
-        .post_init(post_init)
-        .build()
-    )
+    builder = ApplicationBuilder().token(config.TG_BOT_TOKEN).post_init(post_init)
+    if config.TG_PROXY:
+        log.info("Using Telegram proxy: %s", config.TG_PROXY)
+        builder = builder.proxy(config.TG_PROXY).get_updates_proxy(config.TG_PROXY)
+    app = builder.build()
 
     # Command handlers
     app.add_handler(get_search_handler())

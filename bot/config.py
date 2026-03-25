@@ -3,6 +3,7 @@ import os
 # Telegram
 TG_BOT_TOKEN = os.environ["TG_BOT_TOKEN"]
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
+TG_PROXY = os.environ.get("TG_PROXY", "")  # e.g. http://clash:7890
 
 # Radarr
 RADARR_URL = os.environ.get("RADARR_URL", "http://radarr:7878")
