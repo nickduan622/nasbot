@@ -1,8 +1,12 @@
 """Status command handlers."""
 
+import logging
+
 from services import mteam, qbit, radarr, sonarr, farmer
 from telegram import Update
 from telegram.ext import ContextTypes
+
+log = logging.getLogger(__name__)
 
 
 def _fmt_bytes(b: int | float) -> str:
@@ -22,43 +26,50 @@ def _progress_bar(pct: float, width: int = 10) -> str:
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle /status — comprehensive status panel."""
-    # M-Team profile
-    profile = await mteam.get_profile()
-    mt_text = "🌐 *M\\-Team*\n"
-    if profile:
-        ratio_str = f"{profile['ratio']:.2f}" if profile['ratio'] else "∞"
-        mt_text += (
-            f"  分享率: {ratio_str}  "
-            f"↑{_fmt_bytes(profile['uploaded'])} ↓{_fmt_bytes(profile['downloaded'])}\n"
-            f"  魔力值: {profile['bonus']:,.0f}\n"
-            f"  做种: {profile['seeding']}  下载: {profile['leeching']}\n"
+    try:
+        # M-Team profile
+        profile = await mteam.get_profile()
+        mt_text = "🌐 M-Team\n"
+        if profile:
+            ratio_str = f"{profile['ratio']:.2f}" if profile['ratio'] else "∞"
+            mt_text += (
+                f"  分享率: {ratio_str}  "
+                f"↑{_fmt_bytes(profile['uploaded'])} ↓{_fmt_bytes(profile['downloaded'])}\n"
+                f"  魔力值: {profile['bonus']:,.0f}\n"
+                f"  做种: {profile['seeding']}  下载: {profile['leeching']}\n"
+            )
+        else:
+            mt_text += "  ⚠️ 无法连接\n"
+
+        # Download queue from qBittorrent directly
+        torrents = await qbit.qbit.get_torrents()
+        downloading = [t for t in torrents if t.get("state") in ("downloading", "stalledDL", "metaDL", "forcedDL")]
+        seeding = [t for t in torrents if t.get("state") in ("uploading", "stalledUP", "forcedUP")]
+
+        dl_text = f"\n⬇️ 下载中 ({len(downloading)})\n"
+        if downloading:
+            for t in downloading[:5]:
+                progress = t.get("progress", 0) * 100
+                bar = _progress_bar(progress)
+                speed = _fmt_bytes(t.get("dlspeed", 0))
+                name = t.get("name", "")[:35]
+                dl_text += f"  {name}\n  {bar} {progress:.1f}% ↓{speed}/s\n"
+        else:
+            dl_text += "  无活动任务\n"
+
+        # Farm status
+        farm = await farmer.get_farm_status()
+        farm_text = (
+            f"\n🌱 养号\n"
+            f"  做种: {farm['seeding']} 个  "
+            f"磁盘: {farm['disk_usage_gb']}/{farm['disk_limit_gb']} GB\n"
+            f"  养号上传: {farm['total_uploaded_gb']} GB\n"
         )
-    else:
-        mt_text += "  ⚠️ 无法连接\n"
 
-    # Download queue
-    radarr_q = await radarr.get_queue()
-    sonarr_q = await sonarr.get_queue()
-    all_q = radarr_q + sonarr_q
-
-    dl_text = f"\n⬇️ *下载中* \\({len(all_q)}\\)\n"
-    if all_q:
-        for item in all_q[:5]:
-            bar = _progress_bar(item["progress"])
-            dl_text += f"  {item['title'][:30]}\n  {bar} {item['progress']}%\n"
-    else:
-        dl_text += "  无活动任务\n"
-
-    # Farm status
-    farm = await farmer.get_farm_status()
-    farm_text = (
-        f"\n🌱 *养号*\n"
-        f"  做种: {farm['seeding']} 个  "
-        f"磁盘: {farm['disk_usage_gb']}/{farm['disk_limit_gb']} GB\n"
-        f"  养号上传: {farm['total_uploaded_gb']} GB\n"
-    )
-
-    await update.message.reply_text(mt_text + dl_text + farm_text, parse_mode="MarkdownV2")
+        await update.message.reply_text(mt_text + dl_text + farm_text)
+    except Exception as e:
+        log.error("Status command error: %s", e, exc_info=True)
+        await update.message.reply_text(f"⚠️ 获取状态失败: {e}")
 
 
 async def ratio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):

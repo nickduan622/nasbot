@@ -88,6 +88,7 @@ async def search_free_torrents(
             "seeders": int(status.get("seeders", 0) or 0),
             "leechers": int(status.get("leechers", 0) or 0),
             "discount": status.get("discount", "NORMAL"),
+            "discount_end": status.get("discountEndTime", ""),
             "category": t.get("category", ""),
             "created": t.get("createdDate", ""),
         })

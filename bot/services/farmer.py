@@ -3,7 +3,7 @@
 import json
 import logging
 import os
-import shutil
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import config
@@ -69,6 +69,21 @@ async def scan_and_download() -> list[str]:
         # Skip if no seeders AND no leechers (completely dead torrent)
         if t["seeders"] < 1 and t["leechers"] < 1:
             continue
+
+        # Skip if Free expires within 2 hours (not enough time to download)
+        discount_end = t.get("discount_end", "")
+        if discount_end:
+            try:
+                end_time = datetime.strptime(discount_end, "%Y-%m-%d %H:%M:%S")
+                remaining_hours = (end_time - datetime.now()).total_seconds() / 3600
+                # Need enough time to download: estimate based on size
+                # Skip if < 2 hours for files under 5GB, < 6 hours for larger
+                min_hours = 2 if t["size"] < 5 * 1024 ** 3 else 6
+                if remaining_hours < min_hours:
+                    log.info("Skipping %s: Free expires in %.1fh, need %dh", t["name"][:40], remaining_hours, min_hours)
+                    continue
+            except (ValueError, TypeError):
+                pass
 
         # Check remaining disk budget
         remaining_gb = config.FARM_MAX_DISK_GB - disk_gb
