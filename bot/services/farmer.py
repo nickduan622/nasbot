@@ -62,12 +62,12 @@ async def scan_and_download() -> list[str]:
         if t["id"] in grabbed:
             continue
 
-        # Skip tiny files (< 500MB) — not worth the overhead
-        if t["size"] < 500 * 1024 * 1024:
+        # Skip tiny files (< 100MB)
+        if t["size"] < 100 * 1024 * 1024:
             continue
 
-        # Skip if no leechers (nobody downloading = can't upload to anyone)
-        if t["leechers"] < 1:
+        # Skip if no seeders AND no leechers (completely dead torrent)
+        if t["seeders"] < 1 and t["leechers"] < 1:
             continue
 
         # Check remaining disk budget
@@ -90,8 +90,8 @@ async def scan_and_download() -> list[str]:
             disk_gb += torrent_gb
             log.info("Farm added: %s (%.1f GB, %d leechers)", t["name"][:60], torrent_gb, t["leechers"])
 
-        # Limit to 5 new additions per scan
-        if len(added) >= 5:
+        # Limit to 10 new additions per scan
+        if len(added) >= 10:
             break
 
     state["grabbed_ids"] = list(grabbed)
