@@ -143,8 +143,9 @@ QBIT_PASS=<qBittorrent 密码>
 MT_API_TOKEN=<M-Team 存取令牌>
 MT_BASE_URL=https://kp.m-team.cc
 FARM_ENABLED=true
-FARM_SCAN_INTERVAL=30
+FARM_SCAN_INTERVAL=15
 FARM_MAX_DISK_GB=500
+FARM_MAX_TORRENTS=50
 FARM_SEED_RATIO_TARGET=2.0
 FARM_SEED_TIME_TARGET=4320
 EOF
@@ -154,13 +155,21 @@ EOF
 
 #### qBittorrent (`http://NAS_IP:8092`)
 - Downloads > Default Save Path: `/media/downloads`
-- BitTorrent: 关闭 DHT、PeX、LSD、匿名模式
-- Seeding: ratio 2.0 / time 4320 min → Pause
+- Connection > Listening Port: `55000`（6881 被 M-Team 封了）
+- Connection > 取消 UPnP / NAT-PMP
+- BitTorrent > 关闭 DHT、PeX、LSD、匿名模式
+- BitTorrent > Torrent Queueing: 取消勾选（不限制并发）
+- BitTorrent > Seeding: ratio 2.0 / time 4320 min → Pause
+- Web UI > 改密码（临时密码重启会变）
+
+> docker-compose 端口映射需匹配: `"55000:55000"` 和 `"55000:55000/udp"`
 
 #### Prowlarr (`http://NAS_IP:9696`)
+- 首次进入设置 Forms 认证（用户名密码）
 - Indexers: 添加 M-Team，Base URL `https://kp.m-team.cc`，填入存取令牌
-- Settings > Apps: 添加 Radarr (`http://radarr:7878`) 和 Sonarr (`http://sonarr:8989`)
-- Settings > Download Clients: 添加 qBittorrent (`qbit-pt:8092`)
+- Settings > Apps: 添加 Radarr（Server `http://radarr:7878`，Prowlarr Server `http://prowlarr:9696`）
+- Settings > Apps: 添加 Sonarr（Server `http://sonarr:8989`，Prowlarr Server `http://prowlarr:9696`）
+- Settings > Download Clients: 添加 qBittorrent（host `qbit-pt`, port 8092）
 
 #### Radarr (`http://NAS_IP:7878`)
 - Settings > Download Clients: qBittorrent, host `qbit-pt`, port 8092, category `radarr`
