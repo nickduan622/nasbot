@@ -15,12 +15,13 @@ log = logging.getLogger(__name__)
 API_BASE = "https://api.m-team.cc"
 
 
-async def _request(path: str, data: dict | None = None) -> dict | None:
-    """POST to M-Team API with form-encoded data."""
+async def _request(path: str, body: dict | None = None, use_form: bool = False) -> dict | None:
+    """POST to M-Team API. JSON by default, form-encoded when use_form=True."""
     headers = {"x-api-key": config.MT_API_TOKEN}
     url = f"{API_BASE}{path}"
+    kwargs = {"data": body or {}} if use_form else {"json": body or {}}
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=headers, data=data or {}) as resp:
+        async with session.post(url, headers=headers, **kwargs) as resp:
             if resp.status != 200:
                 text = await resp.text()
                 log.error("M-Team API %s -> %s: %s", path, resp.status, text[:500])
@@ -98,7 +99,7 @@ async def search_free_torrents(
 
 async def get_download_url(torrent_id: str) -> str | None:
     """Get .torrent download URL for a torrent."""
-    data = await _request("/api/torrent/genDlToken", {"id": torrent_id})
+    data = await _request("/api/torrent/genDlToken", {"id": torrent_id}, use_form=True)
     if not data or "data" not in data:
         return None
     return data["data"]
