@@ -69,6 +69,15 @@ def add_tv(title: str, year: int = 0, tvdb_id: int = 0, source: str = "manual") 
     return entry
 
 
+def find(media_type: str, title: str, year: int = 0) -> dict | None:
+    """Find an existing entry in wishlist."""
+    data = _load()
+    for item in data.get(media_type, []):
+        if item["title"] == title and (year == 0 or item.get("year", 0) == year):
+            return item
+    return None
+
+
 def update_status(media_type: str, title: str, status: str, year: int = 0):
     """Update status of a wishlist entry."""
     data = _load()

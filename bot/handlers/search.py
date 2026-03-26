@@ -92,15 +92,26 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
     item = results[idx]
 
     if search_type == "movie":
-        wishlist.add_movie(
-            title=item["title"],
-            year=item["year"],
-            tmdb_id=item["tmdb_id"],
-            source="bot_search",
-        )
+        existing = wishlist.find("movies", item["title"], item["year"])
+
+        if existing and existing.get("status") in ("downloading", "completed"):
+            await query.edit_message_text(
+                f"「{item['title']} ({item['year']})」已在队列中\n"
+                f"状态: {existing['status']}"
+            )
+            return ConversationHandler.END
+
+        # Add to wishlist if not exists
+        if not existing:
+            wishlist.add_movie(
+                title=item["title"],
+                year=item["year"],
+                tmdb_id=item["tmdb_id"],
+                source="bot_search",
+            )
 
         await query.edit_message_text(
-            f"✅ 「{item['title']} ({item['year']})」已加入队列\n"
+            f"✅ 「{item['title']} ({item['year']})」\n"
             f"⏳ 正在搜索最佳资源..."
         )
 
@@ -117,15 +128,25 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(f"⚠️ 添加失败，可能已存在或配置问题")
 
     elif search_type == "tv":
-        wishlist.add_tv(
-            title=item["title"],
-            year=item["year"],
-            tvdb_id=item["tvdb_id"],
-            source="bot_search",
-        )
+        existing = wishlist.find("tv", item["title"], item["year"])
+
+        if existing and existing.get("status") in ("downloading", "completed"):
+            await query.edit_message_text(
+                f"「{item['title']} ({item['year']})」已在队列中\n"
+                f"状态: {existing['status']}"
+            )
+            return ConversationHandler.END
+
+        if not existing:
+            wishlist.add_tv(
+                title=item["title"],
+                year=item["year"],
+                tvdb_id=item["tvdb_id"],
+                source="bot_search",
+            )
 
         await query.edit_message_text(
-            f"✅ 「{item['title']} ({item['year']})」已加入下载队列\n"
+            f"✅ 「{item['title']} ({item['year']})」\n"
             f"⏳ 正在搜索所有剧集..."
         )
 
