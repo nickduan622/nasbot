@@ -1,17 +1,13 @@
 """Farm command handlers."""
 
+import logging
+
 import config
 from services import farmer
 from telegram import Update
 from telegram.ext import ContextTypes
 
-
-def _fmt_bytes(b: float) -> str:
-    if b >= 1024 ** 3:
-        return f"{b / 1024 ** 3:.1f} GB"
-    if b >= 1024 ** 2:
-        return f"{b / 1024 ** 2:.1f} MB"
-    return f"{b / 1024:.0f} KB"
+log = logging.getLogger(__name__)
 
 
 async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -68,19 +64,16 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("🔄 执行完整养号检查...")
         lines = ["🌱 手动养号检查"]
 
-        # 1. Protect ratio
         protected = await farmer.protect_ratio()
         if protected:
             for info in protected:
                 lines.append(f"  🛡️ {info}")
 
-        # 2. Scan new
         added = await farmer.scan_and_download()
         if added:
             for info in added:
                 lines.append(f"  ➕ {info}")
 
-        # 3. Cleanup completed
         cleaned = await farmer.cleanup_completed()
         if cleaned:
             for info in cleaned:
@@ -89,7 +82,6 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not protected and not added and not cleaned:
             lines.append("  无变更")
 
-        # 4. Status summary
         status = await farmer.get_farm_status()
         lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
                      f"↑{status['total_uploaded_gb']}GB | "

@@ -5,20 +5,13 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import config
-from services import farmer, mteam, qbit, radarr, sonarr
+from services import farmer, mteam, qbit
+from utils import fmt_bytes
 
 log = logging.getLogger(__name__)
 
 _bot = None
 _chat_id = None
-
-
-def _fmt_bytes(b: int | float) -> str:
-    if b >= 1024 ** 3:
-        return f"{b / 1024 ** 3:.2f} GB"
-    if b >= 1024 ** 2:
-        return f"{b / 1024 ** 2:.1f} MB"
-    return f"{b / 1024:.0f} KB"
 
 
 async def _send(text: str):
@@ -39,7 +32,6 @@ async def farm_scan_job():
         cleaned = await farmer.cleanup_completed()
         status = await farmer.get_farm_status()
 
-        # Always send scan summary
         lines = [f"🌱 养号扫描 (每{config.FARM_SCAN_INTERVAL}分钟)"]
 
         if added:
@@ -82,38 +74,32 @@ async def download_monitor_job():
             category = t.get("category", "")
             name = t.get("name", "")
 
-            # Skip seed category — handled by farm
             if category == "seed":
                 continue
 
-            # Notify on completion (uploading means download is done)
             if state in ("uploading", "stalledUP", "forcedUP"):
-                completion_key = f"notified_{t['hash']}"
-                # Use qbit tags to track notification state
                 tags = t.get("tags", "")
                 if "notified" not in tags:
-                    size = _fmt_bytes(t.get("total_size", 0))
+                    size = fmt_bytes(t.get("total_size", 0))
                     await _send(f"✅ 下载完成！\n📁 {name}\n💾 {size}")
-                    # Tag as notified
-                    async with (await qbit.qbit._session()) as session:
+                    async with qbit.qbit._session() as session:
                         await session.post(
                             f"{config.QBIT_URL}/api/v2/torrents/addTags",
                             data={"hashes": t["hash"], "tags": "notified"},
                         )
 
-            # Notify on significant progress (50%, 75%)
             progress = t.get("progress", 0)
             tags = t.get("tags", "")
             if progress >= 0.75 and "p75" not in tags and state == "downloading":
                 await _send(f"⬇️ {name[:40]}\n{'█' * 7}{'░' * 3} 75%")
-                async with (await qbit.qbit._session()) as session:
+                async with qbit.qbit._session() as session:
                     await session.post(
                         f"{config.QBIT_URL}/api/v2/torrents/addTags",
                         data={"hashes": t["hash"], "tags": "p75"},
                     )
             elif progress >= 0.50 and "p50" not in tags and state == "downloading":
                 await _send(f"⬇️ {name[:40]}\n{'█' * 5}{'░' * 5} 50%")
-                async with (await qbit.qbit._session()) as session:
+                async with qbit.qbit._session() as session:
                     await session.post(
                         f"{config.QBIT_URL}/api/v2/torrents/addTags",
                         data={"hashes": t["hash"], "tags": "p50"},
@@ -134,16 +120,15 @@ async def daily_report_job():
                 "📊 每日报告\n\n"
                 f"🌐 M-Team\n"
                 f"  分享率: {ratio_str}\n"
-                f"  上传: {_fmt_bytes(profile['uploaded'])}\n"
-                f"  下载: {_fmt_bytes(profile['downloaded'])}\n"
-                f"  魔力值: {profile['bonus']:,.0f}\n\n"
+                f"  上传: {fmt_bytes(profile['uploaded'])}\n"
+                f"  下载: {fmt_bytes(profile['downloaded'])}\n"
+                f"  魔力值: {profile['bonus']:,.1f}\n\n"
                 f"🌱 养号\n"
                 f"  做种: {farm_status['seeding']} 个\n"
                 f"  磁盘: {farm_status['disk_usage_gb']}/{farm_status['disk_limit_gb']} GB\n"
                 f"  养号上传: {farm_status['total_uploaded_gb']} GB"
             )
 
-            # Ratio warning
             if profile['ratio'] and profile['ratio'] < 0.5:
                 text += "\n\n⚠️ 分享率低于 0.5，请注意！"
 
@@ -174,19 +159,10 @@ def setup_scheduler(bot, chat_id: str) -> AsyncIOScheduler:
 
     scheduler = AsyncIOScheduler(timezone="Asia/Shanghai")
 
-    # Farm scan: every FARM_SCAN_INTERVAL minutes
     scheduler.add_job(farm_scan_job, "interval", minutes=config.FARM_SCAN_INTERVAL, id="farm_scan")
-
-    # Ratio protection: every 5 minutes — remove expired Free torrents still downloading
     scheduler.add_job(ratio_protect_job, "interval", minutes=5, id="ratio_protect")
-
-    # Download monitor: every 2 minutes
     scheduler.add_job(download_monitor_job, "interval", minutes=2, id="download_monitor")
-
-    # Daily report: every day at 9:00 AM
     scheduler.add_job(daily_report_job, "cron", hour=9, minute=0, id="daily_report")
-
-    # Ratio alert: every 30 minutes
     scheduler.add_job(ratio_alert_job, "interval", minutes=30, id="ratio_alert")
 
     return scheduler
