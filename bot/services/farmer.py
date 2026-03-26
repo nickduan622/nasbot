@@ -59,6 +59,18 @@ async def scan_and_download() -> list[str]:
 
     # Check torrent count limit
     current_torrents = await qbit.qbit.get_torrents(category="seed")
+    current_names = {t.get("name", "") for t in current_torrents}
+
+    # Clean grabbed state: remove IDs for torrents no longer in qBit
+    stale_ids = [tid for tid, info in grabbed.items()
+                 if isinstance(info, dict) and info.get("name", "") not in current_names]
+    for tid in stale_ids:
+        del grabbed[tid]
+    if stale_ids:
+        log.info("Cleaned %d stale entries from grabbed state", len(stale_ids))
+        state["grabbed"] = grabbed
+        _save_state(state)
+
     if len(current_torrents) >= config.FARM_MAX_TORRENTS:
         log.info("Farm torrent limit reached: %d / %d", len(current_torrents), config.FARM_MAX_TORRENTS)
         return added
