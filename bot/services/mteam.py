@@ -39,14 +39,15 @@ async def get_profile() -> dict[str, Any] | None:
     if not data or "data" not in data:
         return None
     p = data["data"]
+    mc = p.get("memberCount", {}) or {}
     return {
         "username": p.get("username", ""),
-        "ratio": float(p.get("ratio", 0) or 0),
-        "uploaded": int(p.get("uploaded", 0) or 0),
-        "downloaded": int(p.get("downloaded", 0) or 0),
-        "bonus": float(p.get("bonus", 0) or 0),
-        "seeding": int(p.get("seeding", 0) or 0),
-        "leeching": int(p.get("leeching", 0) or 0),
+        "ratio": float(mc.get("shareRate", 0) or 0),
+        "uploaded": int(mc.get("uploaded", 0) or 0),
+        "downloaded": int(mc.get("downloaded", 0) or 0),
+        "bonus": float(mc.get("bonus", 0) or 0),
+        "seedtime": int(p.get("seedtime", 0) or 0),
+        "leechtime": int(p.get("leechtime", 0) or 0),
         "user_class": p.get("role", ""),
     }
 

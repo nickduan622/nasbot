@@ -32,11 +32,12 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         mt_text = "🌐 M-Team\n"
         if profile:
             ratio_str = f"{profile['ratio']:.2f}" if profile['ratio'] else "∞"
+            seedtime_h = profile['seedtime'] / 3600
             mt_text += (
                 f"  分享率: {ratio_str}  "
                 f"↑{_fmt_bytes(profile['uploaded'])} ↓{_fmt_bytes(profile['downloaded'])}\n"
-                f"  魔力值: {profile['bonus']:,.0f}\n"
-                f"  做种: {profile['seeding']}  下载: {profile['leeching']}\n"
+                f"  魔力值: {profile['bonus']:,.1f}\n"
+                f"  做种时间: {seedtime_h:.0f}小时\n"
             )
         else:
             mt_text += "  ⚠️ 无法连接\n"
@@ -80,6 +81,7 @@ async def ratio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     ratio_str = f"{profile['ratio']:.2f}" if profile['ratio'] else "∞"
+    seedtime_h = profile['seedtime'] / 3600
     text = (
         f"🌐 M-Team 账户\n\n"
         f"用户名: {profile['username']}\n"
@@ -87,9 +89,8 @@ async def ratio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"分享率: {ratio_str}\n"
         f"上传量: {_fmt_bytes(profile['uploaded'])}\n"
         f"下载量: {_fmt_bytes(profile['downloaded'])}\n"
-        f"魔力值: {profile['bonus']:,.0f}\n"
-        f"做种数: {profile['seeding']}\n"
-        f"下载数: {profile['leeching']}"
+        f"魔力值: {profile['bonus']:,.1f}\n"
+        f"做种时间: {seedtime_h:.0f} 小时"
     )
     await update.message.reply_text(text)
 
