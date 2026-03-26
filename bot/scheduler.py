@@ -35,27 +35,20 @@ async def farm_scan_job():
         return
 
     try:
-        # 1. Rotate underperformers first to free up slots
-        rotated = await farmer.rotate_underperformers()
-        # 2. Then scan for new ones
         added = await farmer.scan_and_download()
-        # 3. Clean up completed
         cleaned = await farmer.cleanup_completed()
         status = await farmer.get_farm_status()
 
         # Always send scan summary
         lines = [f"🌱 养号扫描 (每{config.FARM_SCAN_INTERVAL}分钟)"]
 
-        if rotated:
-            for info in rotated:
-                lines.append(f"  🔄 {info}")
         if added:
             for info in added:
                 lines.append(f"  ➕ {info}")
         if cleaned:
             for info in cleaned:
                 lines.append(f"  🗑️ {info}")
-        if not added and not cleaned and not rotated:
+        if not added and not cleaned:
             lines.append("  无变更")
 
         lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
