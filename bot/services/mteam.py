@@ -54,7 +54,7 @@ async def get_profile() -> dict[str, Any] | None:
 
 async def search_free_torrents(
     page: int = 1,
-    page_size: int = 50,
+    page_size: int = 100,
 ) -> list[dict]:
     """Search for Free/2xFree torrents on M-Team."""
     results = []
@@ -64,7 +64,7 @@ async def search_free_torrents(
         "visible": "1",
         "pageNumber": str(page),
         "pageSize": str(page_size),
-        "sortField": "CREATED_DATE",
+        "sortField": "LEECHERS",
         "sortDirection": "DESC",
         "discount": "FREE",
     }
@@ -94,8 +94,8 @@ async def search_free_torrents(
             "created": t.get("createdDate", ""),
         })
 
-    # Sort: more leechers first (more upload opportunity), then bigger files
-    results.sort(key=lambda x: (-x["leechers"], -x["size"]))
+    # Sort: leechers * size = upload potential score (big file + many leechers = best)
+    results.sort(key=lambda x: -(x["leechers"] * x["size"]))
     return results
 
 

@@ -77,8 +77,8 @@ async def scan_and_download() -> list[str]:
         if t["id"] in grabbed:
             continue
 
-        if t["size"] < 100 * 1024 * 1024:
-            continue
+        if t["size"] < 500 * 1024 * 1024:
+            continue  # Skip < 500MB, not worth the slot
 
         if t["seeders"] < 1 and t["leechers"] < 1:
             continue
