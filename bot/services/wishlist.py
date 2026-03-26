@@ -10,10 +10,20 @@ import config
 log = logging.getLogger(__name__)
 
 WISHLIST_FILE = os.path.join(config.DATA_DIR, "wishlist.json")
+# Bundled wishlist from repo (initial seed data)
+BUNDLED_WISHLIST = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "wishlist.json")
 
 
 def _load() -> dict:
     if os.path.exists(WISHLIST_FILE):
+        with open(WISHLIST_FILE) as f:
+            return json.load(f)
+    # First run: copy bundled wishlist if available
+    if os.path.exists(BUNDLED_WISHLIST):
+        import shutil
+        os.makedirs(os.path.dirname(WISHLIST_FILE), exist_ok=True)
+        shutil.copy2(BUNDLED_WISHLIST, WISHLIST_FILE)
+        log.info("Initialized wishlist from bundled data (%s)", BUNDLED_WISHLIST)
         with open(WISHLIST_FILE) as f:
             return json.load(f)
     return {"movies": [], "tv": []}

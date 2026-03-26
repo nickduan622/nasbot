@@ -50,13 +50,19 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(f"没有 pending 的{media_type}")
             return
 
-        lines = [f"⏳ 待下载 {media_type} ({len(items)}):\n"]
-        for i, m in enumerate(items[:30]):
-            year = f" ({m['year']})" if m.get('year') else ""
-            lines.append(f"{i+1}. {m['title']}{year}")
-        if len(items) > 30:
-            lines.append(f"... 还有 {len(items)-30} 部")
-        await update.message.reply_text("\n".join(lines))
+        # Split into chunks of 50 for Telegram message limit
+        chunks = []
+        for i in range(0, len(items), 50):
+            chunk = items[i:i+50]
+            lines = []
+            if i == 0:
+                lines.append(f"⏳ 待下载 {media_type} ({len(items)}):\n")
+            for j, m in enumerate(chunk):
+                year = f" ({m['year']})" if m.get('year') else ""
+                lines.append(f"{i+j+1}. {m['title']}{year}")
+            chunks.append("\n".join(lines))
+        for chunk in chunks:
+            await update.message.reply_text(chunk)
 
     elif sub == "start":
         # Batch trigger download for pending items
