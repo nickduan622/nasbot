@@ -340,29 +340,42 @@ async def rotate_underperformers() -> list[str]:
         if age_hours < 1:
             continue  # Too new, give it a chance
 
-        upload_rate_mb_h = (uploaded / (1024 ** 2)) / max(age_hours, 0.1)
+        current_up_speed = t.get("upspeed", 0)  # bytes/sec right now
+        avg_rate_mb_h = (uploaded / (1024 ** 2)) / max(age_hours, 0.1)
+
         scored.append({
             "hash": t["hash"],
             "name": name,
             "size_gb": size_gb,
             "age_hours": age_hours,
             "uploaded": uploaded,
-            "upload_rate_mb_h": upload_rate_mb_h,
+            "avg_rate_mb_h": avg_rate_mb_h,
+            "current_speed": current_up_speed,
         })
 
-    # Sort by upload rate: worst performers first
-    scored.sort(key=lambda x: x["upload_rate_mb_h"])
+    # Sort: prioritize removing torrents with 0 current speed AND low average
+    # Score = current_speed * 1000 + avg_rate (current speed matters more)
+    scored.sort(key=lambda x: (x["current_speed"], x["avg_rate_mb_h"]))
 
     # Remove bottom performers to free up slots for fresh torrents
-    # Keep at least 60% of slots, rotate up to 40%
     max_remove = max(1, int(config.FARM_MAX_TORRENTS * 0.4))
     for s in scored[:max_remove]:
-        # Only remove if truly underperforming: < 10 MB/h after 2+ hours
-        if s["age_hours"] >= 2 and s["upload_rate_mb_h"] < 10:
+        should_remove = False
+
+        # Case 1: 0 current upload speed + seeding 2h+ → stale, replace
+        if s["current_speed"] == 0 and s["age_hours"] >= 2:
+            should_remove = True
+
+        # Case 2: low average rate after 2h
+        if s["age_hours"] >= 2 and s["avg_rate_mb_h"] < 10:
+            should_remove = True
+
+        if should_remove:
             await qbit.qbit.delete_torrent(s["hash"], delete_files=True)
-            rate_str = f"{s['upload_rate_mb_h']:.1f}MB/h"
-            removed.append(f"{s['name'][:25]} ({s['size_gb']:.0f}GB {s['age_hours']:.0f}h ↑{rate_str})")
-            log.info("Rotate: %s (age=%.1fh, rate=%.1fMB/h)", s["name"][:40], s["age_hours"], s["upload_rate_mb_h"])
+            speed_str = f"now:{s['current_speed']/1024:.0f}KB/s avg:{s['avg_rate_mb_h']:.1f}MB/h"
+            removed.append(f"{s['name'][:25]} ({s['size_gb']:.0f}GB {s['age_hours']:.0f}h {speed_str})")
+            log.info("Rotate: %s (age=%.1fh, speed=%dB/s, avg=%.1fMB/h)",
+                     s["name"][:40], s["age_hours"], s["current_speed"], s["avg_rate_mb_h"])
 
     return removed
 
