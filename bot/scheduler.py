@@ -5,7 +5,7 @@ import logging
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 import config
-from services import farmer, mteam, qbit
+from services import farmer, mteam, qbit, wishlist
 from utils import fmt_bytes
 
 log = logging.getLogger(__name__)
@@ -142,6 +142,16 @@ async def daily_report_job():
         log.error("Daily report error: %s", e)
 
 
+async def wishlist_sync_job():
+    """Sync wishlist status with Radarr/Sonarr every 10 minutes."""
+    try:
+        updated = await wishlist.sync_status()
+        if updated:
+            await _send(f"📋 队列更新: {updated} 部影视下载完成，已标记 ✅")
+    except Exception as e:
+        log.error("Wishlist sync error: %s", e)
+
+
 async def ratio_alert_job():
     """Check ratio and alert if dangerously low."""
     try:
@@ -167,6 +177,7 @@ def setup_scheduler(bot, chat_id: str) -> AsyncIOScheduler:
     scheduler.add_job(farm_scan_job, "interval", minutes=config.FARM_SCAN_INTERVAL, id="farm_scan")
     scheduler.add_job(ratio_protect_job, "interval", minutes=5, id="ratio_protect")
     scheduler.add_job(download_monitor_job, "interval", minutes=2, id="download_monitor")
+    scheduler.add_job(wishlist_sync_job, "interval", minutes=10, id="wishlist_sync")
     scheduler.add_job(daily_report_job, "cron", hour=9, minute=0, id="daily_report")
     scheduler.add_job(ratio_alert_job, "interval", minutes=30, id="ratio_alert")
 

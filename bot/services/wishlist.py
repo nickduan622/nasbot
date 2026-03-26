@@ -104,6 +104,34 @@ def get_summary() -> dict:
     return summary
 
 
+async def sync_status():
+    """Check Radarr/Sonarr for completed downloads, update wishlist status.
+
+    Returns number of entries updated.
+    """
+    from services import radarr, sonarr
+
+    data = _load()
+    updated = 0
+
+    # Check movies
+    movies = await radarr.get_movies()
+    completed_titles = {(m["title"], m["year"]) for m in movies if m.get("has_file")}
+
+    for item in data.get("movies", []):
+        if item.get("status") in ("pending", "searching", "downloading"):
+            key = (item["title"], item.get("year", 0))
+            if key in completed_titles:
+                item["status"] = "completed"
+                updated += 1
+
+    if updated:
+        _save(data)
+        log.info("Wishlist sync: %d movies marked completed", updated)
+
+    return updated
+
+
 def remove(media_type: str, title: str, year: int = 0) -> bool:
     """Remove an entry from wishlist."""
     data = _load()
