@@ -92,17 +92,15 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
     item = results[idx]
 
     if search_type == "movie":
-        # Add to wishlist
         wishlist.add_movie(
             title=item["title"],
             year=item["year"],
             tmdb_id=item["tmdb_id"],
             source="bot_search",
         )
-        wishlist.update_status("movies", item["title"], "searching", item["year"])
 
         await query.edit_message_text(
-            f"✅ 「{item['title']} ({item['year']})」已加入下载队列\n"
+            f"✅ 「{item['title']} ({item['year']})」已加入队列\n"
             f"⏳ 正在搜索最佳资源..."
         )
 

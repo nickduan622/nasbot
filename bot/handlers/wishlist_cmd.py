@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from services import wishlist, radarr, sonarr
+from services import radarr, sonarr, wishlist
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -15,7 +15,50 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args or []
     sub = args[0] if args else "summary"
 
-    if sub == "summary":
+    if sub == "add":
+        # /wishlist add movie 盗梦空间  or  /wishlist add tv 三体
+        if len(args) < 3:
+            await update.message.reply_text("用法: /wishlist add movie 电影名\n       /wishlist add tv 剧名")
+            return
+        media_type = args[1]  # "movie" or "tv"
+        title = " ".join(args[2:])
+
+        if media_type == "movie":
+            # Search Radarr to get proper title and year
+            results = await radarr.search_movie(title)
+            if results:
+                r = results[0]
+                wishlist.add_movie(title=r["title"], year=r["year"], tmdb_id=r["tmdb_id"], source="wishlist_add")
+                pending = len(wishlist.get_pending("movies"))
+                await update.message.reply_text(
+                    f"📋 已加入队列: {r['title']} ({r['year']})\n"
+                    f"待下载: {pending} 部\n"
+                    f"用 /wishlist start 批量下载"
+                )
+            else:
+                # Add with raw title if search fails
+                wishlist.add_movie(title=title, source="wishlist_add")
+                await update.message.reply_text(f"📋 已加入队列: {title}\n⚠️ 未匹配到 TMDB，标题可能需要调整")
+
+        elif media_type == "tv":
+            results = await sonarr.search_series(title)
+            if results:
+                r = results[0]
+                wishlist.add_tv(title=r["title"], year=r["year"], tvdb_id=r["tvdb_id"], source="wishlist_add")
+                pending = len(wishlist.get_pending("tv"))
+                await update.message.reply_text(
+                    f"📋 已加入队列: {r['title']} ({r['year']}) {r['season_count']}季\n"
+                    f"待下载: {pending} 部\n"
+                    f"用 /wishlist start-tv 批量下载"
+                )
+            else:
+                wishlist.add_tv(title=title, source="wishlist_add")
+                await update.message.reply_text(f"📋 已加入队列: {title}\n⚠️ 未匹配到 TVDB")
+        else:
+            await update.message.reply_text("类型只支持 movie 或 tv")
+        return
+
+    elif sub == "summary":
         summary = wishlist.get_summary()
         m = summary["movies"]
         t = summary["tv"]
@@ -167,6 +210,8 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "用法:\n"
             "/wishlist — 队列摘要\n"
+            "/wishlist add movie 片名 — 加入电影队列（不下载）\n"
+            "/wishlist add tv 剧名 — 加入剧集队列（不下载）\n"
             "/wishlist list — 查看待下载电影\n"
             "/wishlist list tv — 查看待下载剧集\n"
             "/wishlist start [N] — 批量下载 N 部电影 (默认5)\n"
