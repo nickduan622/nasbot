@@ -36,43 +36,44 @@ async def update_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def _do_update() -> dict:
     """Download latest code from GitHub and replace /app files."""
+    import urllib.request
+    import tarfile
+    import io
+    import shutil
+
     try:
-        work_dir = "/tmp/nasbot_update"
         app_dir = "/app"
+        extract_dir = "/tmp/nasbot_update"
 
-        # Clean up any previous attempt
-        subprocess.run(["rm", "-rf", work_dir], check=True)
-        os.makedirs(work_dir, exist_ok=True)
+        # Clean up
+        if os.path.exists(extract_dir):
+            shutil.rmtree(extract_dir)
 
-        # Download and extract
-        proc = subprocess.run(
-            ["wget", "-qO-", MIRROR],
-            capture_output=True, timeout=60,
-        )
-        if proc.returncode != 0:
-            return {"ok": False, "error": f"wget failed: {proc.stderr.decode()[:200]}"}
+        # Download via Python stdlib
+        data = urllib.request.urlopen(MIRROR, timeout=60).read()
 
-        # Extract tar
-        proc2 = subprocess.run(
-            ["tar", "xz", "--strip-components=2", "-C", work_dir],
-            input=proc.stdout, capture_output=True, timeout=30,
-        )
-        if proc2.returncode != 0:
-            return {"ok": False, "error": f"tar failed: {proc2.stderr.decode()[:200]}"}
+        # Extract
+        with tarfile.open(fileobj=io.BytesIO(data)) as tar:
+            tar.extractall(extract_dir)
+
+        src_dir = os.path.join(extract_dir, "nasbot-main", "bot")
 
         # Replace files (but keep data/)
-        for item in os.listdir(work_dir):
-            src = os.path.join(work_dir, item)
+        for item in os.listdir(src_dir):
+            src = os.path.join(src_dir, item)
             dst = os.path.join(app_dir, item)
             if item == "data":
-                continue  # Don't touch persistent data
+                continue
             if os.path.isdir(dst):
-                subprocess.run(["rm", "-rf", dst], check=True)
-            subprocess.run(["cp", "-r", src, dst], check=True)
+                shutil.rmtree(dst)
+            if os.path.isdir(src):
+                shutil.copytree(src, dst)
+            else:
+                shutil.copy2(src, dst)
 
-        subprocess.run(["rm", "-rf", work_dir], check=True)
+        shutil.rmtree(extract_dir)
         return {"ok": True}
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "error": "下载超时"}
+    except urllib.request.URLError as e:
+        return {"ok": False, "error": f"下载失败: {e}"}
     except Exception as e:
         return {"ok": False, "error": str(e)}
