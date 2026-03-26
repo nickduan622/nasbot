@@ -324,20 +324,45 @@ async def rotate_underperformers() -> list[str]:
     if len(torrents) < config.FARM_MAX_TORRENTS * 0.8:
         return removed
 
+    # Calculate upload rate for each completed torrent
+    scored = []
     for t in torrents:
         uploaded = t.get("uploaded", 0)
         added_on = t.get("added_on", 0)
         name = t.get("name", "")
         size_gb = t.get("total_size", 0) / (1024 ** 3)
         progress = t.get("progress", 0)
-
         age_hours = (now.timestamp() - added_on) / 3600 if added_on else 0
 
-        # Completed, seeding 3h+, but 0 bytes uploaded → not contributing
-        if age_hours > 2 and uploaded == 0 and progress >= 1.0:
-            await qbit.qbit.delete_torrent(t["hash"], delete_files=True)
-            removed.append(f"{name[:30]} ({size_gb:.1f}GB 2h+零上传)")
-            log.info("Rotate: %s (age=%.1fh, 0 uploaded)", name[:40], age_hours)
+        if progress < 1.0:
+            continue  # Still downloading, don't rotate
+
+        if age_hours < 1:
+            continue  # Too new, give it a chance
+
+        upload_rate_mb_h = (uploaded / (1024 ** 2)) / max(age_hours, 0.1)
+        scored.append({
+            "hash": t["hash"],
+            "name": name,
+            "size_gb": size_gb,
+            "age_hours": age_hours,
+            "uploaded": uploaded,
+            "upload_rate_mb_h": upload_rate_mb_h,
+        })
+
+    # Sort by upload rate: worst performers first
+    scored.sort(key=lambda x: x["upload_rate_mb_h"])
+
+    # Remove bottom performers to free up slots for fresh torrents
+    # Keep at least 60% of slots, rotate up to 40%
+    max_remove = max(1, int(config.FARM_MAX_TORRENTS * 0.4))
+    for s in scored[:max_remove]:
+        # Only remove if truly underperforming: < 10 MB/h after 2+ hours
+        if s["age_hours"] >= 2 and s["upload_rate_mb_h"] < 10:
+            await qbit.qbit.delete_torrent(s["hash"], delete_files=True)
+            rate_str = f"{s['upload_rate_mb_h']:.1f}MB/h"
+            removed.append(f"{s['name'][:25]} ({s['size_gb']:.0f}GB {s['age_hours']:.0f}h ↑{rate_str})")
+            log.info("Rotate: %s (age=%.1fh, rate=%.1fMB/h)", s["name"][:40], s["age_hours"], s["upload_rate_mb_h"])
 
     return removed
 
