@@ -143,7 +143,7 @@ QBIT_PASS=<qBittorrent 密码>
 MT_API_TOKEN=<M-Team 存取令牌>
 MT_BASE_URL=https://kp.m-team.cc
 FARM_ENABLED=true
-FARM_SCAN_INTERVAL=15
+FARM_SCAN_INTERVAL=60
 FARM_MAX_DISK_GB=500
 FARM_MAX_TORRENTS=50
 FARM_SEED_RATIO_TARGET=2.0
@@ -212,7 +212,7 @@ EOF
 
 - **28 天新手考核**：上传 > 20GB / 下载 > 15GB / 魔力值 > 4500（三选一）
 - **分享率红线**：下载超 10GB 后，分享率 < 0.3 = 封号
-- **自动养号**：Bot 每 30 分钟扫描 Free 种子，自动下载做种到 `/media/downloads/seed/`
+- **自动养号**：Bot 每 60 分钟扫描 Free 种子，自动下载做种到 `/media/downloads/seed/`
 - **全站 Free 活动**：关注 M-Team 公告，活动期间大量下载刷上传量
 - **日报推送**：每日 9:00 自动推送分享率、魔力值、做种状态
 
