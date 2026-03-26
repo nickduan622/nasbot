@@ -80,7 +80,18 @@ async def scan_and_download() -> list[str]:
         log.info("Farm disk limit reached: %.1f / %d GB", disk_gb, config.FARM_MAX_DISK_GB)
         return added
 
-    torrents = await mteam.search_free_torrents(page_size=50)
+    # Search multiple pages to find ungrabbed torrents
+    torrents = []
+    for pg in range(1, 4):  # Up to 3 pages (300 results)
+        page_results = await mteam.search_free_torrents(page=pg, page_size=100)
+        if not page_results:
+            break
+        torrents.extend(page_results)
+        # Stop searching if we have enough ungrabbed candidates
+        ungrabbed = [t for t in torrents if t["id"] not in grabbed]
+        if len(ungrabbed) >= 20:
+            break
+
     if not torrents:
         log.info("No Free torrents found")
         return added
