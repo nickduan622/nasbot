@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 .env
 *.egg-info/
-data/
+bot/data/farm_state.json
+bot/data/chat_id
 .claude/projects/
