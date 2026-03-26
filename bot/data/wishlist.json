@@ -84,8 +84,90 @@
     {"title": "Witness for the Prosecution", "year": 1957, "source": "temp_upgrade", "status": "pending"},
     {"title": "Cloud Atlas", "year": 2012, "source": "download_upgrade", "status": "pending"},
     {"title": "Zootopia 2", "year": 2025, "source": "download_upgrade", "status": "pending"},
-    {"title": "Crazy Stone", "year": 2006, "source": "download_upgrade", "status": "pending"}
+    {"title": "Crazy Stone", "year": 2006, "source": "download_upgrade", "status": "pending"},
+
+    {"title": "Harry Potter and the Philosopher's Stone", "year": 2001, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Chamber of Secrets", "year": 2002, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Prisoner of Azkaban", "year": 2004, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Goblet of Fire", "year": 2005, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Order of the Phoenix", "year": 2007, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Half-Blood Prince", "year": 2009, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Deathly Hallows Part 1", "year": 2010, "source": "temp_series", "status": "pending"},
+    {"title": "Harry Potter and the Deathly Hallows Part 2", "year": 2011, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Fast and the Furious", "year": 2001, "source": "temp_series", "status": "pending"},
+    {"title": "2 Fast 2 Furious", "year": 2003, "source": "temp_series", "status": "pending"},
+    {"title": "Fast & Furious", "year": 2009, "source": "temp_series", "status": "pending"},
+    {"title": "Fast Five", "year": 2011, "source": "temp_series", "status": "pending"},
+    {"title": "Fast & Furious 6", "year": 2013, "source": "temp_series", "status": "pending"},
+    {"title": "Furious 7", "year": 2015, "source": "temp_series", "status": "pending"},
+    {"title": "The Fate of the Furious", "year": 2017, "source": "temp_series", "status": "pending"},
+    {"title": "Fast & Furious 9", "year": 2021, "source": "temp_series", "status": "pending"},
+    {"title": "Fast X", "year": 2023, "source": "temp_series", "status": "pending"},
+
+    {"title": "Men in Black", "year": 1997, "source": "temp_series", "status": "pending"},
+    {"title": "Men in Black II", "year": 2002, "source": "temp_series", "status": "pending"},
+    {"title": "Men in Black 3", "year": 2012, "source": "temp_series", "status": "pending"},
+    {"title": "Men in Black International", "year": 2019, "source": "temp_series", "status": "pending"},
+
+    {"title": "Mission Impossible", "year": 1996, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible II", "year": 2000, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible III", "year": 2006, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible Ghost Protocol", "year": 2011, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible Rogue Nation", "year": 2015, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible Fallout", "year": 2018, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible Dead Reckoning Part One", "year": 2023, "source": "temp_series", "status": "pending"},
+    {"title": "Mission Impossible The Final Reckoning", "year": 2025, "source": "temp_series", "status": "pending"},
+
+    {"title": "Pirates of the Caribbean The Curse of the Black Pearl", "year": 2003, "source": "temp_series", "status": "pending"},
+    {"title": "Pirates of the Caribbean Dead Man's Chest", "year": 2006, "source": "temp_series", "status": "pending"},
+    {"title": "Pirates of the Caribbean At World's End", "year": 2007, "source": "temp_series", "status": "pending"},
+    {"title": "Pirates of the Caribbean On Stranger Tides", "year": 2011, "source": "temp_series", "status": "pending"},
+    {"title": "Pirates of the Caribbean Dead Men Tell No Tales", "year": 2017, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Terminator", "year": 1984, "source": "temp_series", "status": "pending"},
+    {"title": "Terminator 2 Judgment Day", "year": 1991, "source": "temp_series", "status": "pending"},
+    {"title": "Terminator 3 Rise of the Machines", "year": 2003, "source": "temp_series", "status": "pending"},
+    {"title": "Terminator Salvation", "year": 2009, "source": "temp_series", "status": "pending"},
+    {"title": "Terminator Dark Fate", "year": 2019, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Hobbit An Unexpected Journey", "year": 2012, "source": "temp_series", "status": "pending"},
+    {"title": "The Hobbit The Desolation of Smaug", "year": 2013, "source": "temp_series", "status": "pending"},
+    {"title": "The Hobbit The Battle of the Five Armies", "year": 2014, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Hunger Games", "year": 2012, "source": "temp_series", "status": "pending"},
+    {"title": "The Hunger Games Catching Fire", "year": 2013, "source": "temp_series", "status": "pending"},
+    {"title": "The Hunger Games Mockingjay Part 1", "year": 2014, "source": "temp_series", "status": "pending"},
+    {"title": "The Hunger Games Mockingjay Part 2", "year": 2015, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Lord of the Rings The Fellowship of the Ring", "year": 2001, "source": "temp_series", "status": "pending"},
+    {"title": "The Lord of the Rings The Two Towers", "year": 2002, "source": "temp_series", "status": "pending"},
+    {"title": "The Lord of the Rings The Return of the King", "year": 2003, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Matrix", "year": 1999, "source": "temp_series", "status": "pending"},
+    {"title": "The Matrix Reloaded", "year": 2003, "source": "temp_series", "status": "pending"},
+    {"title": "The Matrix Revolutions", "year": 2003, "source": "temp_series", "status": "pending"},
+    {"title": "The Matrix Resurrections", "year": 2021, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Maze Runner", "year": 2014, "source": "temp_series", "status": "pending"},
+    {"title": "Maze Runner The Scorch Trials", "year": 2015, "source": "temp_series", "status": "pending"},
+    {"title": "Maze Runner The Death Cure", "year": 2018, "source": "temp_series", "status": "pending"},
+
+    {"title": "Twilight", "year": 2008, "source": "temp_series", "status": "pending"},
+    {"title": "The Twilight Saga New Moon", "year": 2009, "source": "temp_series", "status": "pending"},
+    {"title": "The Twilight Saga Eclipse", "year": 2010, "source": "temp_series", "status": "pending"},
+    {"title": "The Twilight Saga Breaking Dawn Part 1", "year": 2011, "source": "temp_series", "status": "pending"},
+    {"title": "The Twilight Saga Breaking Dawn Part 2", "year": 2012, "source": "temp_series", "status": "pending"},
+
+    {"title": "Teenage Mutant Ninja Turtles", "year": 2014, "source": "temp_series", "status": "pending"},
+    {"title": "Teenage Mutant Ninja Turtles Out of the Shadows", "year": 2016, "source": "temp_series", "status": "pending"},
+
+    {"title": "Sherlock Holmes", "year": 2009, "source": "temp_series", "status": "pending"},
+    {"title": "Sherlock Holmes A Game of Shadows", "year": 2011, "source": "temp_series", "status": "pending"},
+
+    {"title": "The Godfather Part II", "year": 1974, "source": "temp_series", "status": "pending"},
+    {"title": "The Godfather Part III", "year": 1990, "source": "temp_series", "status": "pending"}
   ],
   "tv": [],
-  "notes": "系列电影 (Harry Potter, Fast & Furious, MIB, Mission Impossible, Pirates, Terminator, The Hobbit, Hunger Games, LOTR, Matrix, Maze Runner, Twilight, DC, Marvel) 待手动确认具体需要哪几部后添加"
+  "notes": "宫崎骏合集、DC 系列、Marvel 系列待后续逐部添加（数量太多需单独确认）"
 }
