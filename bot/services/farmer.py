@@ -120,7 +120,8 @@ async def scan_and_download() -> list[str]:
 
         ok = await qbit.qbit.add_torrent_url(dl_url, config.FARM_SAVE_PATH, category="seed")
         if ok:
-            added.append(t["name"])
+            desc = t.get("smallDescr", "")[:30] or t["name"][:30]
+            added.append(f"{desc} ({torrent_gb:.1f}GB S:{t['seeders']} L:{t['leechers']})")
             grabbed[t["id"]] = {
                 "name": t["name"],
                 "size": t["size"],
@@ -181,8 +182,9 @@ async def protect_ratio() -> list[str]:
         if now > end_time:
             # Free expired, still downloading → DANGER, remove it
             progress = t.get("progress", 0) * 100
+            size_gb = t.get("total_size", 0) / (1024 ** 3)
             await qbit.qbit.delete_torrent(torrent_hash, delete_files=True)
-            protected.append(name)
+            protected.append(f"{name[:30]} ({progress:.0f}% {size_gb:.1f}GB Free已过期)")
             log.warning("RATIO PROTECT: Removed %s (%.1f%% done, Free expired %s)", name[:50], progress, discount_end_str)
 
     return protected
@@ -215,10 +217,10 @@ async def cleanup_completed() -> list[str]:
         time_met = seed_time_min >= config.FARM_SEED_TIME_TARGET
 
         if ratio_met or time_met:
-            name = t.get("name", "unknown")
+            name = t.get("name", "unknown")[:30]
             size_gb = t.get("total_size", 0) / (1024 ** 3)
             await qbit.qbit.delete_torrent(t["hash"], delete_files=True)
-            cleaned.append(name)
+            cleaned.append(f"{name} (r:{ratio:.1f} {seed_time_min/60:.0f}h {size_gb:.1f}GB)")
             disk_gb -= size_gb
             log.info("Cleanup: %s (ratio=%.2f, seed=%.0fmin)", name[:50], ratio, seed_time_min)
 

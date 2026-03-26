@@ -36,14 +36,26 @@ async def farm_scan_job():
 
     try:
         added = await farmer.scan_and_download()
-        if added:
-            names = "\n".join(f"  • {n[:60]}" for n in added)
-            await _send(f"🌱 养号自动下载 {len(added)} 个种子：\n{names}")
-
         cleaned = await farmer.cleanup_completed()
+        status = await farmer.get_farm_status()
+
+        # Always send scan summary
+        lines = [f"🌱 养号扫描 (每{config.FARM_SCAN_INTERVAL}分钟)"]
+
+        if added:
+            for info in added:
+                lines.append(f"  ➕ {info}")
         if cleaned:
-            names = "\n".join(f"  • {n[:60]}" for n in cleaned)
-            await _send(f"🧹 养号清理 {len(cleaned)} 个已达标种子：\n{names}")
+            for info in cleaned:
+                lines.append(f"  🗑️ {info}")
+        if not added and not cleaned:
+            lines.append("  无变更")
+
+        lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
+                     f"↑{status['total_uploaded_gb']}GB | "
+                     f"磁盘 {status['disk_usage_gb']}/{status['disk_limit_gb']}GB")
+
+        await _send("\n".join(lines))
     except Exception as e:
         log.error("Farm scan error: %s", e)
 
@@ -53,8 +65,10 @@ async def ratio_protect_job():
     try:
         protected = await farmer.protect_ratio()
         if protected:
-            names = "\n".join(f"  • {n[:60]}" for n in protected)
-            await _send(f"🛡️ 分享率保护：已移除 {len(protected)} 个 Free 过期但未下完的种子：\n{names}")
+            lines = ["🛡️ 分享率保护"]
+            for info in protected:
+                lines.append(f"  🗑️ {info}")
+            await _send("\n".join(lines))
     except Exception as e:
         log.error("Ratio protect error: %s", e)
 
