@@ -33,25 +33,26 @@ async def farm_scan_job():
         cleaned = await farmer.cleanup_completed()
         status = await farmer.get_farm_status()
 
-        lines = [f"🌱 养号扫描 (每{config.FARM_SCAN_INTERVAL}分钟)"]
+        # Only notify when something actually happened
+        has_changes = rotated or added or cleaned
+        if has_changes:
+            lines = ["🌱 养号扫描"]
 
-        if rotated:
-            for info in rotated:
-                lines.append(f"  🔄 {info}")
-        if added:
-            for info in added:
-                lines.append(f"  ➕ {info}")
-        if cleaned:
-            for info in cleaned:
-                lines.append(f"  🗑️ {info}")
-        if not added and not cleaned and not rotated:
-            lines.append("  无变更")
+            if rotated:
+                for info in rotated:
+                    lines.append(f"  🔄 {info}")
+            if added:
+                for info in added:
+                    lines.append(f"  ➕ {info}")
+            if cleaned:
+                for info in cleaned:
+                    lines.append(f"  🗑️ {info}")
 
-        lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
-                     f"↑{status['total_uploaded_gb']}GB | "
-                     f"磁盘 {status['disk_usage_gb']}/{status['disk_limit_gb']}GB")
+            lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
+                         f"↑{status['total_uploaded_gb']}GB | "
+                         f"磁盘 {status['disk_usage_gb']}/{status['disk_limit_gb']}GB")
 
-        await _send("\n".join(lines))
+            await _send("\n".join(lines))
     except Exception as e:
         log.error("Farm scan error: %s", e)
 

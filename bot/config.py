@@ -24,11 +24,11 @@ MT_BASE_URL = os.environ.get("MT_BASE_URL", "https://api.m-team.cc")
 
 # Farm
 FARM_ENABLED = os.environ.get("FARM_ENABLED", "true").lower() == "true"
-FARM_SCAN_INTERVAL = int(os.environ.get("FARM_SCAN_INTERVAL", "60"))
+FARM_SCAN_INTERVAL = int(os.environ.get("FARM_SCAN_INTERVAL", "15"))
 FARM_MAX_DISK_GB = int(os.environ.get("FARM_MAX_DISK_GB", "500"))
 FARM_SEED_RATIO_TARGET = float(os.environ.get("FARM_SEED_RATIO_TARGET", "2.0"))
 FARM_SEED_TIME_TARGET = int(os.environ.get("FARM_SEED_TIME_TARGET", "4320"))
-FARM_MAX_TORRENTS = int(os.environ.get("FARM_MAX_TORRENTS", "50"))
+FARM_MAX_TORRENTS = int(os.environ.get("FARM_MAX_TORRENTS", "25"))
 FARM_SAVE_PATH = "/media/downloads/seed"
 
 # Paths

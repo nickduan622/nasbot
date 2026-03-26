@@ -334,9 +334,9 @@ async def rotate_underperformers() -> list[str]:
         age_hours = (now.timestamp() - added_on) / 3600 if added_on else 0
 
         # Completed, seeding 3h+, but 0 bytes uploaded → not contributing
-        if age_hours > 3 and uploaded == 0 and progress >= 1.0:
+        if age_hours > 2 and uploaded == 0 and progress >= 1.0:
             await qbit.qbit.delete_torrent(t["hash"], delete_files=True)
-            removed.append(f"{name[:30]} ({size_gb:.1f}GB 3h+零上传)")
+            removed.append(f"{name[:30]} ({size_gb:.1f}GB 2h+零上传)")
             log.info("Rotate: %s (age=%.1fh, 0 uploaded)", name[:40], age_hours)
 
     return removed
