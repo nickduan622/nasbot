@@ -2,7 +2,7 @@
 
 import logging
 
-from services import mteam, qbit, farmer
+from services import mteam, qbit, farmer, wishlist
 from telegram import Update
 from telegram.ext import ContextTypes
 from utils import fmt_bytes
@@ -54,7 +54,20 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"  养号上传: {farm['total_uploaded_gb']} GB\n"
         )
 
-        await update.message.reply_text(mt_text + dl_text + farm_text)
+        wl_summary = wishlist.get_summary()
+        m = wl_summary["movies"]
+        t = wl_summary["tv"]
+        wl_text = "\n📋 下载队列\n"
+        wl_parts = []
+        for status, icon in [("pending", "⏳"), ("downloading", "⬇️"), ("completed", "✅"), ("failed", "❌")]:
+            count = m.get(status, 0) + t.get(status, 0)
+            if count:
+                wl_parts.append(f"{icon}{count}")
+        wl_text += f"  电影: {sum(m.values())}  剧集: {sum(t.values())}\n"
+        if wl_parts:
+            wl_text += f"  {' | '.join(wl_parts)}\n"
+
+        await update.message.reply_text(mt_text + dl_text + farm_text + wl_text)
     except Exception as e:
         log.error("Status command error: %s", e, exc_info=True)
         await update.message.reply_text(f"⚠️ 获取状态失败: {e}")
