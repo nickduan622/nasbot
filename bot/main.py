@@ -62,11 +62,15 @@ async def post_init(app):
         BotCommand("help", "帮助"),
     ])
 
-    # Set up scheduler
+    # Set up scheduler and send startup notification
     chat_id = config.TG_CHAT_ID
     if chat_id:
         scheduler = setup_scheduler(app.bot, chat_id)
         scheduler.start()
+        try:
+            await app.bot.send_message(chat_id=chat_id, text="✅ Bot 已上线，所有服务正常运行")
+        except Exception:
+            pass
         log.info("Scheduler started with chat_id=%s", chat_id)
     else:
         log.warning("Scheduler not started — TG_CHAT_ID not configured")
