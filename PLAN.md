@@ -19,12 +19,16 @@
 - [x] 代码审查 & 清理 (统一 fmt_bytes, 修复调度器双启动, context.bot)
 - [x] 端口转发已设置 (55000 TCP/UDP) — 但因 CGNAT 无效
 - [x] 旧资源盘点完成 (docs/migration-plan.md)
+- [x] Wishlist 系统: 195 部电影队列, /wishlist add/list/start, 去重, 状态同步
+- [x] /movie /tv 端到端测试通过 (Love & Other Drugs 测试成功)
+- [x] 分享率熔断: ratio < 1.2 自动暂停非养号下载, > 1.5 自动恢复
+- [x] 养号轮换优化: 按上传速率排序, < 10MB/h 且 2h+ 自动踢掉换新
 
 ### 运行中
 - 自动养号 Bot 24/7 运行中, 每 15 分钟扫描, 上限 25 种子 / 500GB
-- CGNAT 优化策略: 智能排序 leechers/(seeders+1), 2h 零上传轮换
-- M-Team 新手考核中 (截止 ~2026-04-22), 条件三选一: 上传 > 20GB / 下载 > 15GB / 魔力值 > 4500
-- 当前: 分享率 5.56, 上传 ~37GB (已过考核线)
+- CGNAT 优化策略: 智能排序 leechers/(seeders+1), 按上传速率轮换 (<10MB/h 踢掉)
+- M-Team 新手考核已过, 当前: 分享率 6.12, 上传 ~40GB
+- Wishlist: 195 部电影待下载, 等 4/1 Free 活动批量下载
 
 ### 已知限制
 - CGNAT (中国移动内网 IP 100.99.x.x), 端口转发无效, 上传速度受限

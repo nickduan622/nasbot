@@ -20,7 +20,7 @@ def _load() -> dict:
             return json.load(f)
     # First run: copy bundled wishlist if available
     if os.path.exists(BUNDLED_WISHLIST):
-        import shutil
+        import shutil  # noqa: lazy import, only needed on first run
         os.makedirs(os.path.dirname(WISHLIST_FILE), exist_ok=True)
         shutil.copy2(BUNDLED_WISHLIST, WISHLIST_FILE)
         log.info("Initialized wishlist from bundled data (%s)", BUNDLED_WISHLIST)
