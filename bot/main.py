@@ -11,6 +11,7 @@ import config
 from handlers.search import get_search_handler
 from handlers.status import status_cmd, ratio_cmd, downloads_cmd
 from handlers.farm import farm_cmd
+from handlers.admin import update_cmd
 from scheduler import setup_scheduler
 
 logging.basicConfig(
@@ -32,7 +33,9 @@ async def start_cmd(update: Update, context):
         "/ratio — M-Team 账户详情\n"
         "/farm status — 养号状态\n"
         "/farm scan — 立即扫描 Free 种子\n"
+        "/farm audit — 检查清理不合适种子\n"
         "/farm cleanup — 清理已达标种子\n"
+        "/update — 远程更新 Bot 代码\n"
         "/help — 显示此帮助"
     )
 
@@ -55,6 +58,7 @@ async def post_init(app):
         BotCommand("downloads", "当前下载详情"),
         BotCommand("ratio", "M-Team 账户详情"),
         BotCommand("farm", "养号管理"),
+        BotCommand("update", "远程更新 Bot"),
         BotCommand("help", "帮助"),
     ])
 
@@ -107,6 +111,7 @@ def main():
     app.add_handler(CommandHandler("ratio", ratio_cmd))
     app.add_handler(CommandHandler("downloads", downloads_cmd))
     app.add_handler(CommandHandler("farm", farm_cmd))
+    app.add_handler(CommandHandler("update", update_cmd))
 
     # Fallback to capture chat ID
     from telegram.ext import MessageHandler, filters

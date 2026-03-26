@@ -22,7 +22,7 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if sub == "status":
         status = await farmer.get_farm_status()
         text = (
-            "🌱 *养号状态*\n\n"
+            "🌱 养号状态\n\n"
             f"做种中: {status['seeding']} 个\n"
             f"下载中: {status['downloading']} 个\n"
             f"总种子: {status['total_torrents']} 个\n\n"
@@ -32,7 +32,7 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"自动养号: {'✅ 开启' if config.FARM_ENABLED else '❌ 关闭'}\n"
             f"扫描间隔: 每 {config.FARM_SCAN_INTERVAL} 分钟"
         )
-        await update.message.reply_text(text, parse_mode="Markdown")
+        await update.message.reply_text(text)
 
     elif sub == "scan":
         await update.message.reply_text("🔍 正在扫描 M-Team Free 种子...")
@@ -51,10 +51,24 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await update.message.reply_text("没有需要清理的种子")
 
+    elif sub == "audit":
+        await update.message.reply_text("🔍 正在检查所有养号种子...")
+        result = await farmer.audit_seeds()
+        text = f"🔍 审计结果\n\n"
+        text += f"总种子: {result['total']} 个\n"
+        text += f"正常 (Free/做种中): {result['healthy']} 个\n"
+        if result['removed']:
+            names = "\n".join(f"  • {n[:60]}" for n in result['removed'])
+            text += f"\n🗑️ 已删除 {len(result['removed'])} 个不合适种子：\n{names}"
+        else:
+            text += f"\n✅ 没有需要删除的种子"
+        await update.message.reply_text(text)
+
     else:
         await update.message.reply_text(
             "用法:\n"
             "/farm status — 养号状态\n"
             "/farm scan — 立即扫描下载\n"
+            "/farm audit — 检查清理不合适种子\n"
             "/farm cleanup — 清理已达标种子"
         )

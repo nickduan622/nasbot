@@ -216,7 +216,76 @@ async def cleanup_completed() -> list[str]:
     return cleaned
 
 
-# ─── 4. Status ───
+# ─── 4. Audit Seeds ───
+
+async def audit_seeds() -> dict:
+    """Check all seed torrents. Remove those that are:
+    - Still downloading but Free has expired
+    - Stalled with no progress and no seeders (dead torrents)
+
+    Returns dict with total, healthy, removed counts.
+    """
+    torrents = await qbit.qbit.get_torrents(category="seed")
+    state = _load_state()
+    grabbed = state.get("grabbed", {})
+    now = datetime.now()
+    removed = []
+    healthy = 0
+
+    for t in torrents:
+        name = t.get("name", "")
+        torrent_hash = t["hash"]
+        qbit_state = t.get("state", "")
+        progress = t.get("progress", 0)
+        is_downloading = qbit_state in ("downloading", "stalledDL", "metaDL", "forcedDL")
+        is_seeding = qbit_state in ("uploading", "stalledUP", "forcedUP")
+
+        # If already fully downloaded and seeding — always keep, it's pure upload
+        if is_seeding or progress >= 1.0:
+            healthy += 1
+            continue
+
+        # Still downloading — check if Free expired
+        discount_end_str = None
+        for tid, info in grabbed.items():
+            if isinstance(info, dict) and info.get("name", "") == name:
+                discount_end_str = info.get("discount_end", "")
+                break
+
+        should_remove = False
+        reason = ""
+
+        if discount_end_str:
+            try:
+                end_time = datetime.strptime(discount_end_str, "%Y-%m-%d %H:%M:%S")
+                if now > end_time:
+                    should_remove = True
+                    reason = f"Free 已过期 ({discount_end_str})"
+            except (ValueError, TypeError):
+                pass
+
+        # Dead torrent: stalled, 0 progress, added > 6 hours ago
+        if not should_remove and qbit_state == "stalledDL" and progress < 0.01:
+            added_on = t.get("added_on", 0)
+            if added_on > 0 and (now.timestamp() - added_on) > 6 * 3600:
+                should_remove = True
+                reason = "死种 (6h+ 无进度)"
+
+        if should_remove:
+            await qbit.qbit.delete_torrent(torrent_hash, delete_files=True)
+            removed.append(f"{name[:50]} — {reason}")
+            log.info("Audit removed: %s (%s)", name[:50], reason)
+        else:
+            healthy += 1
+
+    return {
+        "total": len(torrents),
+        "healthy": healthy,
+        "removed": removed,
+    }
+
+
+# ─── 5. Status ───
 
 async def get_farm_status() -> dict:
     torrents = await qbit.qbit.get_torrents(category="seed")
