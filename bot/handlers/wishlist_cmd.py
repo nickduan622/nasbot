@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from services import radarr, sonarr, wishlist
+from services import mteam, radarr, sonarr, wishlist
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -116,7 +116,15 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(text[i:i+4000])
 
     elif sub == "start":
-        # Batch trigger download for pending items
+        # Ratio safety check
+        profile = await mteam.get_profile()
+        if profile and profile["ratio"] and profile["ratio"] < 1.0 and profile["downloaded"] > 0:
+            await update.message.reply_text(
+                f"⚠️ 分享率保护！当前分享率 {profile['ratio']:.2f}，低于 1.0\n"
+                f"批量下载已阻止。建议等 Free 活动期间再用此命令。"
+            )
+            return
+
         limit = int(args[1]) if len(args) > 1 and args[1].isdigit() else 5
         await update.message.reply_text(f"🚀 开始批量下载 (每次 {limit} 部)...")
 

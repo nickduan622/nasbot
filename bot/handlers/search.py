@@ -2,7 +2,7 @@
 
 import logging
 
-from services import radarr, sonarr, wishlist
+from services import mteam, radarr, sonarr, wishlist
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler, CommandHandler
 
@@ -91,6 +91,16 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     item = results[idx]
 
+    # Ratio safety check before downloading
+    profile = await mteam.get_profile()
+    ratio_safe = True
+    if profile and profile["downloaded"] > 0:
+        # Estimate: a typical movie ~20GB, TV season ~50GB
+        est_size = 50 * 1024 ** 3 if search_type == "tv" else 20 * 1024 ** 3
+        projected_ratio = profile["uploaded"] / (profile["downloaded"] + est_size)
+        if projected_ratio < 1.0:
+            ratio_safe = False
+
     if search_type == "movie":
         wishlist.add_movie(
             title=item["title"],
@@ -98,6 +108,16 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tmdb_id=item["tmdb_id"],
             source="bot_search",
         )
+
+        if not ratio_safe:
+            current_ratio = f"{profile['ratio']:.2f}" if profile else "?"
+            await query.edit_message_text(
+                f"⚠️ 分享率保护！\n"
+                f"「{item['title']} ({item['year']})」已加入队列但未下载\n"
+                f"当前分享率: {current_ratio}，下载后可能低于 1.0\n"
+                f"建议等 Free 活动期间用 /wishlist start 下载"
+            )
+            return ConversationHandler.END
 
         await query.edit_message_text(
             f"✅ 「{item['title']} ({item['year']})」已加入队列\n"
@@ -123,7 +143,16 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
             tvdb_id=item["tvdb_id"],
             source="bot_search",
         )
-        wishlist.update_status("tv", item["title"], "searching", item["year"])
+
+        if not ratio_safe:
+            current_ratio = f"{profile['ratio']:.2f}" if profile else "?"
+            await query.edit_message_text(
+                f"⚠️ 分享率保护！\n"
+                f"「{item['title']} ({item['year']})」已加入队列但未下载\n"
+                f"当前分享率: {current_ratio}，下载后可能低于 1.0\n"
+                f"建议等 Free 活动期间用 /wishlist start-tv 下载"
+            )
+            return ConversationHandler.END
 
         await query.edit_message_text(
             f"✅ 「{item['title']} ({item['year']})」已加入下载队列\n"
