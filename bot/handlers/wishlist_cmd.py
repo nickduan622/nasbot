@@ -86,26 +86,34 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text)
 
     elif sub == "list":
-        # Show pending movies
+        # Show ALL items grouped by status
         media_type = args[1] if len(args) > 1 else "movies"
-        items = wishlist.get_pending(media_type)
-        if not items:
-            await update.message.reply_text(f"没有 pending 的{media_type}")
+        all_items = wishlist.get_all(media_type)
+        if not all_items:
+            await update.message.reply_text(f"队列为空")
             return
 
-        # Split into chunks of 50 for Telegram message limit
-        chunks = []
-        for i in range(0, len(items), 50):
-            chunk = items[i:i+50]
-            lines = []
-            if i == 0:
-                lines.append(f"⏳ 待下载 {media_type} ({len(items)}):\n")
-            for j, m in enumerate(chunk):
+        icon_map = {"pending": "⏳", "searching": "🔍", "downloading": "⬇️", "completed": "✅", "failed": "❌"}
+        grouped = {}
+        for m in all_items:
+            s = m.get("status", "pending")
+            grouped.setdefault(s, []).append(m)
+
+        lines = [f"📋 {media_type} 完整列表 ({len(all_items)}):\n"]
+        for status in ("downloading", "searching", "pending", "completed", "failed"):
+            items = grouped.get(status, [])
+            if not items:
+                continue
+            icon = icon_map.get(status, "")
+            lines.append(f"\n{icon} {status} ({len(items)}):")
+            for m in items:
                 year = f" ({m['year']})" if m.get('year') else ""
-                lines.append(f"{i+j+1}. {m['title']}{year}")
-            chunks.append("\n".join(lines))
-        for chunk in chunks:
-            await update.message.reply_text(chunk)
+                lines.append(f"  {m['title']}{year}")
+
+        # Split into chunks for Telegram message limit
+        text = "\n".join(lines)
+        for i in range(0, len(text), 4000):
+            await update.message.reply_text(text[i:i+4000])
 
     elif sub == "start":
         # Batch trigger download for pending items
