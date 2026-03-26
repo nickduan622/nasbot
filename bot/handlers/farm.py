@@ -64,11 +64,45 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             text += f"\n✅ 没有需要删除的种子"
         await update.message.reply_text(text)
 
+    elif sub == "check":
+        await update.message.reply_text("🔄 执行完整养号检查...")
+        lines = ["🌱 手动养号检查"]
+
+        # 1. Protect ratio
+        protected = await farmer.protect_ratio()
+        if protected:
+            for info in protected:
+                lines.append(f"  🛡️ {info}")
+
+        # 2. Scan new
+        added = await farmer.scan_and_download()
+        if added:
+            for info in added:
+                lines.append(f"  ➕ {info}")
+
+        # 3. Cleanup completed
+        cleaned = await farmer.cleanup_completed()
+        if cleaned:
+            for info in cleaned:
+                lines.append(f"  🗑️ {info}")
+
+        if not protected and not added and not cleaned:
+            lines.append("  无变更")
+
+        # 4. Status summary
+        status = await farmer.get_farm_status()
+        lines.append(f"\n📊 {status['seeding']}做种 {status['downloading']}下载 | "
+                     f"↑{status['total_uploaded_gb']}GB | "
+                     f"磁盘 {status['disk_usage_gb']}/{status['disk_limit_gb']}GB")
+
+        await update.message.reply_text("\n".join(lines))
+
     else:
         await update.message.reply_text(
             "用法:\n"
             "/farm status — 养号状态\n"
-            "/farm scan — 立即扫描下载\n"
+            "/farm check — 完整检查（=定时任务）\n"
+            "/farm scan — 仅扫描新种子\n"
             "/farm audit — 检查清理不合适种子\n"
             "/farm cleanup — 清理已达标种子"
         )
