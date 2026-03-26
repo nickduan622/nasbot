@@ -153,15 +153,67 @@ async def wishlist_sync_job():
 
 
 async def ratio_alert_job():
-    """Check ratio and alert if dangerously low."""
+    """Check ratio and auto-pause non-seed downloads if ratio drops near 1.0."""
     try:
         profile = await mteam.get_profile()
-        if profile and profile['ratio'] and profile['ratio'] < 0.5:
-            await _send(
-                f"🚨 分享率预警！\n"
-                f"当前分享率: {profile['ratio']:.2f}\n"
-                f"低于 0.3 将被封号，请立即停止下载非 Free 资源！"
+        if not profile or not profile['ratio']:
+            return
+
+        ratio = profile['ratio']
+
+        # Level 1: ratio < 1.2 → warning + pause non-seed downloads
+        if ratio < 1.2:
+            # Pause all non-seed downloading torrents
+            torrents = await qbit.qbit.get_torrents()
+            paused = []
+            for t in torrents:
+                cat = t.get("category", "")
+                state = t.get("state", "")
+                if cat != "seed" and state in ("downloading", "stalledDL", "metaDL", "forcedDL"):
+                    async with qbit.qbit._session() as session:
+                        await session.post(
+                            f"{config.QBIT_URL}/api/v2/torrents/pause",
+                            data={"hashes": t["hash"]},
+                        )
+                    paused.append(t.get("name", "")[:30])
+
+            msg = (
+                f"⚠️ 分享率熔断！\n"
+                f"当前分享率: {ratio:.2f}（接近 1.0）\n"
+                f"↑{fmt_bytes(profile['uploaded'])} ↓{fmt_bytes(profile['downloaded'])}\n"
             )
+            if paused:
+                msg += f"\n已暂停 {len(paused)} 个非养号下载:\n"
+                msg += "\n".join(f"  • {n}" for n in paused)
+            msg += "\n\n分享率恢复到 1.5 以上后会自动恢复下载"
+            await _send(msg)
+
+        # Level 2: ratio < 0.5 → critical alert
+        elif ratio < 0.5:
+            await _send(
+                f"🚨 分享率危险！\n"
+                f"当前分享率: {ratio:.2f}\n"
+                f"低于 0.3 将被封号！"
+            )
+
+        # Auto-resume: ratio recovered above 1.5
+        elif ratio > 1.5:
+            torrents = await qbit.qbit.get_torrents()
+            resumed = []
+            for t in torrents:
+                cat = t.get("category", "")
+                state = t.get("state", "")
+                if cat != "seed" and state == "pausedDL":
+                    async with qbit.qbit._session() as session:
+                        await session.post(
+                            f"{config.QBIT_URL}/api/v2/torrents/resume",
+                            data={"hashes": t["hash"]},
+                        )
+                    resumed.append(t.get("name", "")[:30])
+            if resumed:
+                await _send(
+                    f"✅ 分享率恢复 ({ratio:.2f})，已恢复 {len(resumed)} 个下载"
+                )
     except Exception as e:
         log.error("Ratio alert error: %s", e)
 
@@ -179,6 +231,6 @@ def setup_scheduler(bot, chat_id: str) -> AsyncIOScheduler:
     scheduler.add_job(download_monitor_job, "interval", minutes=2, id="download_monitor")
     scheduler.add_job(wishlist_sync_job, "interval", minutes=10, id="wishlist_sync")
     scheduler.add_job(daily_report_job, "cron", hour=9, minute=0, id="daily_report")
-    scheduler.add_job(ratio_alert_job, "interval", minutes=30, id="ratio_alert")
+    scheduler.add_job(ratio_alert_job, "interval", minutes=10, id="ratio_alert")
 
     return scheduler
