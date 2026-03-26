@@ -103,7 +103,8 @@ async def scan_and_download() -> list[str]:
         if t["size"] < 500 * 1024 * 1024:
             continue  # Skip < 500MB, not worth the slot
 
-        if t["seeders"] < 1 and t["leechers"] < 1:
+        # Must have seeders (can download) and leechers (can upload to)
+        if t["seeders"] < 1 or t["leechers"] < 1:
             continue
 
         # Check Free remaining time
@@ -310,7 +311,38 @@ async def audit_seeds() -> dict:
     }
 
 
-# ─── 5. Status ───
+# ─── 5. Rotate Underperformers ───
+
+async def rotate_underperformers() -> list[str]:
+    """Remove seed torrents seeding 3h+ with 0 upload.
+    Only rotates when near torrent limit (need room for better ones).
+    """
+    removed = []
+    torrents = await qbit.qbit.get_torrents(category="seed")
+    now = datetime.now()
+
+    if len(torrents) < config.FARM_MAX_TORRENTS * 0.8:
+        return removed
+
+    for t in torrents:
+        uploaded = t.get("uploaded", 0)
+        added_on = t.get("added_on", 0)
+        name = t.get("name", "")
+        size_gb = t.get("total_size", 0) / (1024 ** 3)
+        progress = t.get("progress", 0)
+
+        age_hours = (now.timestamp() - added_on) / 3600 if added_on else 0
+
+        # Completed, seeding 3h+, but 0 bytes uploaded → not contributing
+        if age_hours > 3 and uploaded == 0 and progress >= 1.0:
+            await qbit.qbit.delete_torrent(t["hash"], delete_files=True)
+            removed.append(f"{name[:30]} ({size_gb:.1f}GB 3h+零上传)")
+            log.info("Rotate: %s (age=%.1fh, 0 uploaded)", name[:40], age_hours)
+
+    return removed
+
+
+# ─── 6. Status ───
 
 async def get_farm_status() -> dict:
     torrents = await qbit.qbit.get_torrents(category="seed")

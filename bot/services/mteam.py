@@ -94,8 +94,9 @@ async def search_free_torrents(
             "created": t.get("createdDate", ""),
         })
 
-    # Sort: leechers * size = upload potential score (big file + many leechers = best)
-    results.sort(key=lambda x: -(x["leechers"] * x["size"]))
+    # Sort by upload potential: leechers / (seeders+1) = demand per seeder
+    # Higher = less competition = more upload for you. Tiebreak by size.
+    results.sort(key=lambda x: -(x["leechers"] / max(x["seeders"] + 1, 1) * x["size"]))
     return results
 
 

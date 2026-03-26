@@ -69,6 +69,11 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for info in protected:
                 lines.append(f"  🛡️ {info}")
 
+        rotated = await farmer.rotate_underperformers()
+        if rotated:
+            for info in rotated:
+                lines.append(f"  🔄 {info}")
+
         added = await farmer.scan_and_download()
         if added:
             for info in added:
@@ -79,7 +84,7 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             for info in cleaned:
                 lines.append(f"  🗑️ {info}")
 
-        if not protected and not added and not cleaned:
+        if not protected and not rotated and not added and not cleaned:
             lines.append("  无变更")
 
         status = await farmer.get_farm_status()
