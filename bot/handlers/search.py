@@ -1,19 +1,18 @@
-"""Search and download command handlers."""
+"""Search and download command handlers — unified through wishlist."""
 
 import logging
 
-from services import radarr, sonarr
+from services import radarr, sonarr, wishlist
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, ConversationHandler, CallbackQueryHandler, CommandHandler
 
 log = logging.getLogger(__name__)
 
-# Conversation states
 PICK_RESULT = 1
 
 
 async def movie_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /movie <name> — search and add movie."""
+    """Handle /movie <name> — search, add to wishlist, trigger download."""
     if not context.args:
         await update.message.reply_text("用法: /movie 电影名称\n例如: /movie 盗梦空间")
         return ConversationHandler.END
@@ -43,7 +42,7 @@ async def movie_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def tv_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handle /tv <name> — search and add TV series."""
+    """Handle /tv <name> — search, add to wishlist, trigger download."""
     if not context.args:
         await update.message.reply_text("用法: /tv 剧名\n例如: /tv 三体")
         return ConversationHandler.END
@@ -82,50 +81,72 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("已取消")
         return ConversationHandler.END
 
-    idx = int(data.split("_")[1])
+    idx = int(data.split("_")[1]) if "_" in data else -1
     results = context.user_data.get("search_results", [])
     search_type = context.user_data.get("search_type")
 
-    if idx >= len(results):
+    if idx < 0 or idx >= len(results):
         await query.edit_message_text("选择无效")
         return ConversationHandler.END
 
     item = results[idx]
 
     if search_type == "movie":
+        # Add to wishlist
+        wishlist.add_movie(
+            title=item["title"],
+            year=item["year"],
+            tmdb_id=item["tmdb_id"],
+            source="bot_search",
+        )
+        wishlist.update_status("movies", item["title"], "searching", item["year"])
+
         await query.edit_message_text(
-            f"✅ 已添加「{item['title']} ({item['year']})」到下载队列\n"
+            f"✅ 「{item['title']} ({item['year']})」已加入下载队列\n"
             f"⏳ 正在搜索最佳资源..."
         )
+
         result = await radarr.add_movie(item["tmdb_id"])
         if result:
+            wishlist.update_status("movies", item["title"], "downloading", item["year"])
             await query.edit_message_text(
                 f"✅ 「{item['title']} ({item['year']})」已开始搜索下载\n"
                 f"质量目标: Bluray-2160p > Bluray-1080p\n"
                 f"用 /downloads 查看进度"
             )
         else:
+            wishlist.update_status("movies", item["title"], "failed", item["year"])
             await query.edit_message_text(f"⚠️ 添加失败，可能已存在或配置问题")
 
     elif search_type == "tv":
+        wishlist.add_tv(
+            title=item["title"],
+            year=item["year"],
+            tvdb_id=item["tvdb_id"],
+            source="bot_search",
+        )
+        wishlist.update_status("tv", item["title"], "searching", item["year"])
+
         await query.edit_message_text(
-            f"✅ 已添加「{item['title']} ({item['year']})」到下载队列\n"
+            f"✅ 「{item['title']} ({item['year']})」已加入下载队列\n"
             f"⏳ 正在搜索所有剧集..."
         )
+
         result = await sonarr.add_series(item["tvdb_id"])
         if result:
+            wishlist.update_status("tv", item["title"], "downloading", item["year"])
             await query.edit_message_text(
                 f"✅ 「{item['title']} ({item['year']})」全{item['season_count']}季已开始下载\n"
                 f"用 /downloads 查看进度"
             )
         else:
+            wishlist.update_status("tv", item["title"], "failed", item["year"])
             await query.edit_message_text(f"⚠️ 添加失败，可能已存在或配置问题")
 
     return ConversationHandler.END
 
 
 def get_search_handler() -> ConversationHandler:
-    """Build conversation handler for search flow."""
     return ConversationHandler(
         entry_points=[
             CommandHandler("movie", movie_cmd),

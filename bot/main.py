@@ -11,6 +11,7 @@ import config
 from handlers.search import get_search_handler
 from handlers.status import status_cmd, ratio_cmd, downloads_cmd
 from handlers.farm import farm_cmd
+from handlers.wishlist_cmd import wishlist_cmd
 from handlers.admin import update_cmd
 from scheduler import setup_scheduler
 
@@ -38,6 +39,9 @@ async def start_cmd(update: Update, context):
         "/farm scan — 仅扫描新种子\n"
         "/farm audit — 检查清理不合适种子\n"
         "/farm cleanup — 清理已达标种子\n"
+        "/wishlist — 下载队列摘要\n"
+        "/wishlist list — 查看待下载列表\n"
+        "/wishlist start [N] — 批量下载 N 部电影\n"
         "/update — 远程更新 Bot 代码\n"
         "/help — 显示此帮助"
     )
@@ -57,6 +61,7 @@ async def post_init(app):
         BotCommand("downloads", "当前下载详情"),
         BotCommand("ratio", "M-Team 账户详情"),
         BotCommand("farm", "养号管理"),
+        BotCommand("wishlist", "下载队列"),
         BotCommand("update", "远程更新 Bot"),
         BotCommand("help", "帮助"),
     ])
@@ -115,6 +120,7 @@ def main():
     app.add_handler(CommandHandler("ratio", ratio_cmd))
     app.add_handler(CommandHandler("downloads", downloads_cmd))
     app.add_handler(CommandHandler("farm", farm_cmd))
+    app.add_handler(CommandHandler("wishlist", wishlist_cmd))
     app.add_handler(CommandHandler("update", update_cmd))
     app.add_handler(MessageHandler(filters.ALL, any_message), group=1)
 
