@@ -132,111 +132,166 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(text[i:i+4000])
 
     elif sub == "start":
-        limit = int(args[1]) if len(args) > 1 and args[1].isdigit() else 5
-        await update.message.reply_text(f"🚀 开始批量下载 (每次 {limit} 部)...")
+        if len(args) < 2:
+            await update.message.reply_text(
+                "用法:\n"
+                "/wishlist start movie [N] — 批量下载 N 部电影\n"
+                "/wishlist start tv [N] — 批量下载 N 部剧集\n"
+                "/wishlist start <片名> — 下载队列中指定的一部")
+            return
 
-        pending_movies = wishlist.get_pending("movies")[:limit]
-        added = []
-        failed = []
+        target = args[1]
 
-        for m in pending_movies:
-            title = m["title"]
-            year = m.get("year", 0)
-            tmdb_id = m.get("tmdb_id", 0)
+        # /wishlist start movie [N]
+        if target == "movie":
+            limit = int(args[2]) if len(args) > 2 and args[2].isdigit() else 5
+            await _batch_start_movies(update, limit)
 
-            wishlist.update_status("movies", title, "searching", year)
+        # /wishlist start tv [N]
+        elif target == "tv":
+            limit = int(args[2]) if len(args) > 2 and args[2].isdigit() else 3
+            await _batch_start_tv(update, limit)
 
-            # Search if no tmdb_id
-            if not tmdb_id:
-                search_term = f"{title} {year}" if year else title
-                results = await radarr.search_movie(search_term)
-                if results:
-                    tmdb_id = results[0]["tmdb_id"]
+        # /wishlist start <title>
+        else:
+            title_query = " ".join(args[1:]).lower()
+            # Search in both movies and tv wishlist
+            found = None
+            found_type = None
+            for item in wishlist.get_pending("movies"):
+                if title_query in item["title"].lower():
+                    found = item
+                    found_type = "movies"
+                    break
+            if not found:
+                for item in wishlist.get_pending("tv"):
+                    if title_query in item["title"].lower():
+                        found = item
+                        found_type = "tv"
+                        break
 
-            if tmdb_id:
-                result = await radarr.add_movie(tmdb_id)
-                if result:
-                    wishlist.update_status("movies", title, "downloading", year)
-                    added.append(f"{title} ({year})")
+            if not found:
+                await update.message.reply_text(f"队列中没有匹配「{title_query}」的待下载项")
+                return
+
+            title = found["title"]
+            year = found.get("year", 0)
+            await update.message.reply_text(f"🚀 开始下载: {title} ({year})...")
+
+            if found_type == "movies":
+                tmdb_id = found.get("tmdb_id", 0)
+                if not tmdb_id:
+                    results = await radarr.search_movie(f"{title} {year}" if year else title)
+                    if results:
+                        tmdb_id = results[0]["tmdb_id"]
+                if tmdb_id:
+                    result = await radarr.add_movie(tmdb_id)
+                    if result:
+                        wishlist.update_status("movies", title, "downloading", year)
+                        await update.message.reply_text(f"✅ 「{title} ({year})」已开始下载")
+                    else:
+                        wishlist.update_status("movies", title, "failed", year)
+                        await update.message.reply_text(f"❌ 添加失败")
                 else:
-                    wishlist.update_status("movies", title, "failed", year)
-                    failed.append(f"{title} ({year})")
+                    await update.message.reply_text(f"❌ 在 TMDB 中找不到该电影")
             else:
-                wishlist.update_status("movies", title, "failed", year)
-                failed.append(f"{title} ({year}) — 未找到")
-
-            # Small delay to avoid API rate limits
-            await asyncio.sleep(1)
-
-        lines = ["📋 批量下载结果\n"]
-        if added:
-            lines.append(f"✅ 成功 ({len(added)}):")
-            for name in added:
-                lines.append(f"  • {name}")
-        if failed:
-            lines.append(f"\n❌ 失败 ({len(failed)}):")
-            for name in failed:
-                lines.append(f"  • {name}")
-
-        remaining = len(wishlist.get_pending("movies"))
-        lines.append(f"\n⏳ 剩余待下载: {remaining} 部")
-
-        await update.message.reply_text("\n".join(lines))
-
-    elif sub == "start-tv":
-        limit = int(args[1]) if len(args) > 1 and args[1].isdigit() else 3
-        await update.message.reply_text(f"🚀 开始批量下载剧集 (每次 {limit} 部)...")
-
-        pending_tv = wishlist.get_pending("tv")[:limit]
-        added = []
-        failed = []
-
-        for s in pending_tv:
-            title = s["title"]
-            year = s.get("year", 0)
-            tvdb_id = s.get("tvdb_id", 0)
-
-            wishlist.update_status("tv", title, "searching", year)
-
-            if not tvdb_id:
-                results = await sonarr.search_series(title)
-                if results:
-                    tvdb_id = results[0]["tvdb_id"]
-
-            if tvdb_id:
-                result = await sonarr.add_series(tvdb_id)
-                if result:
-                    wishlist.update_status("tv", title, "downloading", year)
-                    added.append(f"{title} ({year})")
+                tvdb_id = found.get("tvdb_id", 0)
+                if not tvdb_id:
+                    results = await sonarr.search_series(title)
+                    if results:
+                        tvdb_id = results[0]["tvdb_id"]
+                if tvdb_id:
+                    result = await sonarr.add_series(tvdb_id)
+                    if result:
+                        wishlist.update_status("tv", title, "downloading", year)
+                        await update.message.reply_text(f"✅ 「{title} ({year})」已开始下载")
+                    else:
+                        wishlist.update_status("tv", title, "failed", year)
+                        await update.message.reply_text(f"❌ 添加失败")
                 else:
-                    wishlist.update_status("tv", title, "failed", year)
-                    failed.append(f"{title} ({year})")
-            else:
-                wishlist.update_status("tv", title, "failed", year)
-                failed.append(f"{title} ({year}) — 未找到")
-
-            await asyncio.sleep(1)
-
-        lines = ["📋 批量下载剧集结果\n"]
-        if added:
-            lines.append(f"✅ 成功 ({len(added)}):")
-            for name in added:
-                lines.append(f"  • {name}")
-        if failed:
-            lines.append(f"\n❌ 失败 ({len(failed)}):")
-            for name in failed:
-                lines.append(f"  • {name}")
-
-        await update.message.reply_text("\n".join(lines))
+                    await update.message.reply_text(f"❌ 在 TVDB 中找不到该剧集")
 
     else:
         await update.message.reply_text(
             "用法:\n"
             "/wishlist — 队列摘要\n"
-            "/wishlist add movie 片名 — 加入电影队列（不下载）\n"
-            "/wishlist add tv 剧名 — 加入剧集队列（不下载）\n"
+            "/wishlist add movie <片名> — 加入电影队列\n"
+            "/wishlist add tv <剧名> — 加入剧集队列\n"
             "/wishlist list — 查看待下载电影\n"
             "/wishlist list tv — 查看待下载剧集\n"
-            "/wishlist start [N] — 批量下载 N 部电影 (默认5)\n"
-            "/wishlist start-tv [N] — 批量下载 N 部剧集 (默认3)"
+            "/wishlist start movie [N] — 批量下载 N 部电影\n"
+            "/wishlist start tv [N] — 批量下载 N 部剧集\n"
+            "/wishlist start <片名> — 下载队列中指定的一部"
         )
+
+
+async def _batch_start_movies(update: Update, limit: int):
+    await update.message.reply_text(f"🚀 批量下载电影 (最多 {limit} 部)...")
+    pending = wishlist.get_pending("movies")[:limit]
+    added, failed = [], []
+
+    for m in pending:
+        title, year = m["title"], m.get("year", 0)
+        tmdb_id = m.get("tmdb_id", 0)
+        wishlist.update_status("movies", title, "searching", year)
+
+        if not tmdb_id:
+            results = await radarr.search_movie(f"{title} {year}" if year else title)
+            if results:
+                tmdb_id = results[0]["tmdb_id"]
+
+        if tmdb_id and await radarr.add_movie(tmdb_id):
+            wishlist.update_status("movies", title, "downloading", year)
+            added.append(f"{title} ({year})")
+        else:
+            wishlist.update_status("movies", title, "failed", year)
+            failed.append(f"{title} ({year})")
+        await asyncio.sleep(1)
+
+    lines = ["📋 批量下载结果\n"]
+    if added:
+        lines.append(f"✅ 成功 ({len(added)}):")
+        for n in added:
+            lines.append(f"  • {n}")
+    if failed:
+        lines.append(f"\n❌ 失败 ({len(failed)}):")
+        for n in failed:
+            lines.append(f"  • {n}")
+    lines.append(f"\n⏳ 剩余: {len(wishlist.get_pending('movies'))} 部电影")
+    await update.message.reply_text("\n".join(lines))
+
+
+async def _batch_start_tv(update: Update, limit: int):
+    await update.message.reply_text(f"🚀 批量下载剧集 (最多 {limit} 部)...")
+    pending = wishlist.get_pending("tv")[:limit]
+    added, failed = [], []
+
+    for s in pending:
+        title, year = s["title"], s.get("year", 0)
+        tvdb_id = s.get("tvdb_id", 0)
+        wishlist.update_status("tv", title, "searching", year)
+
+        if not tvdb_id:
+            results = await sonarr.search_series(title)
+            if results:
+                tvdb_id = results[0]["tvdb_id"]
+
+        if tvdb_id and await sonarr.add_series(tvdb_id):
+            wishlist.update_status("tv", title, "downloading", year)
+            added.append(f"{title} ({year})")
+        else:
+            wishlist.update_status("tv", title, "failed", year)
+            failed.append(f"{title} ({year})")
+        await asyncio.sleep(1)
+
+    lines = ["📋 批量下载剧集结果\n"]
+    if added:
+        lines.append(f"✅ 成功 ({len(added)}):")
+        for n in added:
+            lines.append(f"  • {n}")
+    if failed:
+        lines.append(f"\n❌ 失败 ({len(failed)}):")
+        for n in failed:
+            lines.append(f"  • {n}")
+    lines.append(f"\n⏳ 剩余: {len(wishlist.get_pending('tv'))} 部剧集")
+    await update.message.reply_text("\n".join(lines))
