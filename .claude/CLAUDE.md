@@ -39,6 +39,7 @@ nas/
 - Telegram API 需要走 Clash 代理 (http://clash:7890), 其他服务直连
 - 密钥不入 git (.env, clash/config.yaml)
 - Git author: nickduan622 <nick.duan19961212@gmail.com>, 不加 Co-Authored-By
+- **新增/修改 Bot 命令时，必须同步更新 main.py 里的 start_cmd help 文本和 set_my_commands 列表**
 
 ## 恢复 Session 检查清单
 1. 读 `PLAN.md` 了解当前状态和 TODO
