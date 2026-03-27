@@ -57,6 +57,22 @@ async def add_series(tvdb_id: int, quality_profile_id: int = 0) -> dict | None:
     return await _api("POST", "/series", json=series)
 
 
+async def find_in_library(title: str, year: int = 0) -> dict | None:
+    """Check if a series already exists in Sonarr library."""
+    data = await _api("GET", "/series")
+    if not data:
+        return None
+    for s in data:
+        if s.get("title", "").lower() == title.lower() and (year == 0 or s.get("year", 0) == year):
+            stats = s.get("statistics", {})
+            return {
+                "title": s["title"],
+                "year": s.get("year", 0),
+                "has_episodes": stats.get("episodeFileCount", 0) > 0,
+            }
+    return None
+
+
 async def get_queue() -> list[dict]:
     """Get current download queue."""
     data = await _api("GET", "/queue", params={"pageSize": 50})

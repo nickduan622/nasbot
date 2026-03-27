@@ -78,6 +78,17 @@ async def get_queue() -> list[dict]:
     return results
 
 
+async def find_in_library(title: str, year: int = 0) -> dict | None:
+    """Check if a movie already exists in Radarr library."""
+    data = await _api("GET", "/movie")
+    if not data:
+        return None
+    for m in data:
+        if m.get("title", "").lower() == title.lower() and (year == 0 or m.get("year", 0) == year):
+            return {"title": m["title"], "year": m.get("year", 0), "has_file": m.get("hasFile", False)}
+    return None
+
+
 async def get_movies() -> list[dict]:
     """Get all monitored movies."""
     data = await _api("GET", "/movie")

@@ -92,71 +92,66 @@ async def pick_result(update: Update, context: ContextTypes.DEFAULT_TYPE):
     item = results[idx]
 
     if search_type == "movie":
-        existing = wishlist.find("movies", item["title"], item["year"])
-
-        if existing and existing.get("status") in ("downloading", "completed"):
-            await query.edit_message_text(
-                f"「{item['title']} ({item['year']})」已在队列中\n"
-                f"状态: {existing['status']}"
-            )
+        # 1. Check library
+        in_library = await radarr.find_in_library(item["title"], item["year"])
+        if in_library and in_library.get("has_file"):
+            await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」已在影音库中")
             return ConversationHandler.END
 
-        # Add to wishlist if not exists
+        # 2. Check wishlist
+        existing = wishlist.find("movies", item["title"], item["year"])
+        if existing and existing.get("status") == "completed":
+            await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」已完成下载")
+            return ConversationHandler.END
+        if existing and existing.get("status") == "downloading":
+            await query.edit_message_text(f"⬇️ 「{item['title']} ({item['year']})」正在下载中")
+            return ConversationHandler.END
+
+        # 3. Add to wishlist if not exists
         if not existing:
-            wishlist.add_movie(
-                title=item["title"],
-                year=item["year"],
-                tmdb_id=item["tmdb_id"],
-                source="bot_search",
-            )
+            wishlist.add_movie(title=item["title"], year=item["year"], tmdb_id=item["tmdb_id"], source="bot_search")
 
-        await query.edit_message_text(
-            f"✅ 「{item['title']} ({item['year']})」\n"
-            f"⏳ 正在搜索最佳资源..."
-        )
-
+        # 4. Trigger download
+        await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」\n⏳ 正在搜索最佳资源...")
         result = await radarr.add_movie(item["tmdb_id"])
         if result:
             wishlist.update_status("movies", item["title"], "downloading", item["year"])
             await query.edit_message_text(
                 f"✅ 「{item['title']} ({item['year']})」已开始搜索下载\n"
                 f"质量目标: Bluray-2160p > Bluray-1080p\n"
-                f"用 /downloads 查看进度"
-            )
+                f"用 /downloads 查看进度")
         else:
             wishlist.update_status("movies", item["title"], "failed", item["year"])
             await query.edit_message_text(f"⚠️ 添加失败，可能已存在或配置问题")
 
     elif search_type == "tv":
-        existing = wishlist.find("tv", item["title"], item["year"])
-
-        if existing and existing.get("status") in ("downloading", "completed"):
-            await query.edit_message_text(
-                f"「{item['title']} ({item['year']})」已在队列中\n"
-                f"状态: {existing['status']}"
-            )
+        # 1. Check library
+        in_library = await sonarr.find_in_library(item["title"], item["year"])
+        if in_library and in_library.get("has_episodes"):
+            await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」已在影音库中")
             return ConversationHandler.END
 
+        # 2. Check wishlist
+        existing = wishlist.find("tv", item["title"], item["year"])
+        if existing and existing.get("status") == "completed":
+            await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」已完成下载")
+            return ConversationHandler.END
+        if existing and existing.get("status") == "downloading":
+            await query.edit_message_text(f"⬇️ 「{item['title']} ({item['year']})」正在下载中")
+            return ConversationHandler.END
+
+        # 3. Add to wishlist if not exists
         if not existing:
-            wishlist.add_tv(
-                title=item["title"],
-                year=item["year"],
-                tvdb_id=item["tvdb_id"],
-                source="bot_search",
-            )
+            wishlist.add_tv(title=item["title"], year=item["year"], tvdb_id=item["tvdb_id"], source="bot_search")
 
-        await query.edit_message_text(
-            f"✅ 「{item['title']} ({item['year']})」\n"
-            f"⏳ 正在搜索所有剧集..."
-        )
-
+        # 4. Trigger download
+        await query.edit_message_text(f"✅ 「{item['title']} ({item['year']})」\n⏳ 正在搜索所有剧集...")
         result = await sonarr.add_series(item["tvdb_id"])
         if result:
             wishlist.update_status("tv", item["title"], "downloading", item["year"])
             await query.edit_message_text(
                 f"✅ 「{item['title']} ({item['year']})」全{item['season_count']}季已开始下载\n"
-                f"用 /downloads 查看进度"
-            )
+                f"用 /downloads 查看进度")
         else:
             wishlist.update_status("tv", item["title"], "failed", item["year"])
             await query.edit_message_text(f"⚠️ 添加失败，可能已存在或配置问题")

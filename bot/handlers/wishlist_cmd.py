@@ -27,6 +27,10 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results = await radarr.search_movie(title)
             if results:
                 r = results[0]
+                in_library = await radarr.find_in_library(r["title"], r["year"])
+                if in_library and in_library.get("has_file"):
+                    await update.message.reply_text(f"✅ 「{r['title']} ({r['year']})」已在影音库中，无需添加")
+                    return
                 existing = wishlist.find("movies", r["title"], r["year"])
                 if existing:
                     await update.message.reply_text(
@@ -47,6 +51,10 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results = await sonarr.search_series(title)
             if results:
                 r = results[0]
+                in_library = await sonarr.find_in_library(r["title"], r["year"])
+                if in_library and in_library.get("has_episodes"):
+                    await update.message.reply_text(f"✅ 「{r['title']} ({r['year']})」已在影音库中，无需添加")
+                    return
                 existing = wishlist.find("tv", r["title"], r["year"])
                 if existing:
                     await update.message.reply_text(
