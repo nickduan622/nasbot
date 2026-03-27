@@ -12,7 +12,7 @@ import config
 from handlers.search import get_search_handler
 from handlers.status import status_cmd, ratio_cmd, downloads_cmd
 from handlers.farm import farm_cmd
-from handlers.wishlist_cmd import wishlist_cmd
+from handlers.wishlist_cmd import wishlist_cmd, wishlist_confirm_callback
 from handlers.admin import update_cmd
 from scheduler import setup_scheduler
 
@@ -139,6 +139,8 @@ def main():
     app.add_handler(CommandHandler("downloads", downloads_cmd))
     app.add_handler(CommandHandler("farm", farm_cmd))
     app.add_handler(CommandHandler("wishlist", wishlist_cmd))
+    from telegram.ext import CallbackQueryHandler
+    app.add_handler(CallbackQueryHandler(wishlist_confirm_callback, pattern=r"^wl_confirm_"))
     app.add_handler(CommandHandler("update", update_cmd))
     app.add_handler(MessageHandler(filters.ALL, any_message), group=1)
     app.add_error_handler(error_handler)

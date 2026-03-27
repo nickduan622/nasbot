@@ -155,7 +155,8 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # /wishlist start <title>
         else:
             title_query = " ".join(args[1:]).lower()
-            # Search in both movies and tv wishlist
+
+            # Search wishlist by title (English)
             found = None
             found_type = None
             for item in wishlist.get_pending("movies"):
@@ -170,46 +171,45 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         found_type = "tv"
                         break
 
+            # If not found, try Chinese → English via Radarr/Sonarr search
+            if not found:
+                results = await radarr.search_movie(title_query)
+                if results:
+                    eng_title = results[0]["title"].lower()
+                    for item in wishlist.get_pending("movies"):
+                        if eng_title in item["title"].lower() or item["title"].lower() in eng_title:
+                            found = item
+                            found_type = "movies"
+                            break
+            if not found:
+                results = await sonarr.search_series(title_query)
+                if results:
+                    eng_title = results[0]["title"].lower()
+                    for item in wishlist.get_pending("tv"):
+                        if eng_title in item["title"].lower() or item["title"].lower() in eng_title:
+                            found = item
+                            found_type = "tv"
+                            break
+
             if not found:
                 await update.message.reply_text(f"队列中没有匹配「{title_query}」的待下载项")
                 return
 
+            # Confirm before downloading
             title = found["title"]
             year = found.get("year", 0)
-            await update.message.reply_text(f"🚀 开始下载: {title} ({year})...")
+            context.user_data["wishlist_start_item"] = found
+            context.user_data["wishlist_start_type"] = found_type
 
-            if found_type == "movies":
-                tmdb_id = found.get("tmdb_id", 0)
-                if not tmdb_id:
-                    results = await radarr.search_movie(f"{title} {year}" if year else title)
-                    if results:
-                        tmdb_id = results[0]["tmdb_id"]
-                if tmdb_id:
-                    result = await radarr.add_movie(tmdb_id)
-                    if result:
-                        wishlist.update_status("movies", title, "downloading", year)
-                        await update.message.reply_text(f"✅ 「{title} ({year})」已开始下载")
-                    else:
-                        wishlist.update_status("movies", title, "failed", year)
-                        await update.message.reply_text(f"❌ 添加失败")
-                else:
-                    await update.message.reply_text(f"❌ 在 TMDB 中找不到该电影")
-            else:
-                tvdb_id = found.get("tvdb_id", 0)
-                if not tvdb_id:
-                    results = await sonarr.search_series(title)
-                    if results:
-                        tvdb_id = results[0]["tvdb_id"]
-                if tvdb_id:
-                    result = await sonarr.add_series(tvdb_id)
-                    if result:
-                        wishlist.update_status("tv", title, "downloading", year)
-                        await update.message.reply_text(f"✅ 「{title} ({year})」已开始下载")
-                    else:
-                        wishlist.update_status("tv", title, "failed", year)
-                        await update.message.reply_text(f"❌ 添加失败")
-                else:
-                    await update.message.reply_text(f"❌ 在 TVDB 中找不到该剧集")
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            buttons = [
+                [InlineKeyboardButton(f"✅ 下载 {title} ({year})", callback_data="wl_confirm_yes")],
+                [InlineKeyboardButton("❌ 取消", callback_data="wl_confirm_no")],
+            ]
+            await update.message.reply_text(
+                f"找到: {title} ({year}) [{found_type}]\n确认下载？",
+                reply_markup=InlineKeyboardMarkup(buttons),
+            )
 
     else:
         await update.message.reply_text(
@@ -295,3 +295,49 @@ async def _batch_start_tv(update: Update, limit: int):
             lines.append(f"  • {n}")
     lines.append(f"\n⏳ 剩余: {len(wishlist.get_pending('tv'))} 部剧集")
     await update.message.reply_text("\n".join(lines))
+
+
+async def wishlist_confirm_callback(update: Update, context):
+    """Handle confirm/cancel for wishlist start <title>."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "wl_confirm_no":
+        await query.edit_message_text("已取消")
+        return
+
+    found = context.user_data.get("wishlist_start_item")
+    found_type = context.user_data.get("wishlist_start_type")
+    if not found:
+        await query.edit_message_text("⚠️ 操作已过期")
+        return
+
+    title = found["title"]
+    year = found.get("year", 0)
+
+    await query.edit_message_text(f"⏳ 正在下载: {title} ({year})...")
+
+    if found_type == "movies":
+        tmdb_id = found.get("tmdb_id", 0)
+        if not tmdb_id:
+            results = await radarr.search_movie(f"{title} {year}" if year else title)
+            if results:
+                tmdb_id = results[0]["tmdb_id"]
+        if tmdb_id and await radarr.add_movie(tmdb_id):
+            wishlist.update_status("movies", title, "downloading", year)
+            await query.edit_message_text(f"✅ 「{title} ({year})」已开始下载\n用 /downloads 查看进度")
+        else:
+            wishlist.update_status("movies", title, "failed", year)
+            await query.edit_message_text(f"❌ 下载失败")
+    else:
+        tvdb_id = found.get("tvdb_id", 0)
+        if not tvdb_id:
+            results = await sonarr.search_series(title)
+            if results:
+                tvdb_id = results[0]["tvdb_id"]
+        if tvdb_id and await sonarr.add_series(tvdb_id):
+            wishlist.update_status("tv", title, "downloading", year)
+            await query.edit_message_text(f"✅ 「{title} ({year})」已开始下载\n用 /downloads 查看进度")
+        else:
+            wishlist.update_status("tv", title, "failed", year)
+            await query.edit_message_text(f"❌ 下载失败")
