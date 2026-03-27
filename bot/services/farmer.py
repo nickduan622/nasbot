@@ -314,14 +314,18 @@ async def audit_seeds() -> dict:
 # ─── 5. Rotate Underperformers ───
 
 async def rotate_underperformers() -> list[str]:
-    """Remove seed torrents seeding 3h+ with 0 upload.
-    Only rotates when near torrent limit (need room for better ones).
+    """Remove seed torrents seeding 2h+ with poor upload performance.
+    Triggers when near torrent limit OR disk is over limit.
     """
     removed = []
     torrents = await qbit.qbit.get_torrents(category="seed")
     now = datetime.now()
+    disk_gb = _get_seed_disk_usage_gb()
 
-    if len(torrents) < config.FARM_MAX_TORRENTS * 0.8:
+    near_torrent_limit = len(torrents) >= config.FARM_MAX_TORRENTS * 0.8
+    disk_over_limit = disk_gb >= config.FARM_MAX_DISK_GB
+
+    if not near_torrent_limit and not disk_over_limit:
         return removed
 
     # Calculate upload rate for each completed torrent

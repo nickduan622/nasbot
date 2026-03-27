@@ -5,6 +5,7 @@ import os
 import sys
 
 from telegram import Update, BotCommand
+from telegram.error import NetworkError, TimedOut
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
 
 import config
@@ -80,6 +81,15 @@ async def post_init(app):
         log.warning("Scheduler not started — TG_CHAT_ID not configured")
 
 
+async def error_handler(update, context):
+    """Handle errors — log network issues, don't crash polling."""
+    err = context.error
+    if isinstance(err, (NetworkError, TimedOut)):
+        log.warning("Network error (polling will retry): %s", err)
+        return
+    log.error("Unhandled exception:", exc_info=context.error)
+
+
 async def any_message(update: Update, context):
     """Capture chat ID from any message if not configured."""
     global _scheduler_started
@@ -123,9 +133,13 @@ def main():
     app.add_handler(CommandHandler("wishlist", wishlist_cmd))
     app.add_handler(CommandHandler("update", update_cmd))
     app.add_handler(MessageHandler(filters.ALL, any_message), group=1)
+    app.add_error_handler(error_handler)
 
     log.info("Bot is running. Press Ctrl+C to stop.")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    app.run_polling(
+        allowed_updates=Update.ALL_TYPES,
+        poll_interval=1.0,
+    )
 
 
 if __name__ == "__main__":
