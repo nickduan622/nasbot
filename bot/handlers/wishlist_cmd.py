@@ -24,10 +24,14 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         title = " ".join(args[2:])
 
         if media_type == "movie":
-            # Search Radarr to get proper title and year
             results = await radarr.search_movie(title)
             if results:
                 r = results[0]
+                existing = wishlist.find("movies", r["title"], r["year"])
+                if existing:
+                    await update.message.reply_text(
+                        f"「{r['title']} ({r['year']})」已在队列中\n状态: {existing['status']}")
+                    return
                 wishlist.add_movie(title=r["title"], year=r["year"], tmdb_id=r["tmdb_id"], source="wishlist_add")
                 pending = len(wishlist.get_pending("movies"))
                 await update.message.reply_text(
@@ -36,7 +40,6 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"用 /wishlist start 批量下载"
                 )
             else:
-                # Add with raw title if search fails
                 wishlist.add_movie(title=title, source="wishlist_add")
                 await update.message.reply_text(f"📋 已加入队列: {title}\n⚠️ 未匹配到 TMDB，标题可能需要调整")
 
@@ -44,6 +47,11 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             results = await sonarr.search_series(title)
             if results:
                 r = results[0]
+                existing = wishlist.find("tv", r["title"], r["year"])
+                if existing:
+                    await update.message.reply_text(
+                        f"「{r['title']} ({r['year']})」已在队列中\n状态: {existing['status']}")
+                    return
                 wishlist.add_tv(title=r["title"], year=r["year"], tvdb_id=r["tvdb_id"], source="wishlist_add")
                 pending = len(wishlist.get_pending("tv"))
                 await update.message.reply_text(
