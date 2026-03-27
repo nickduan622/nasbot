@@ -3,7 +3,7 @@
 import logging
 
 import config
-from services import farmer
+from services import farmer, mteam
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -17,18 +17,24 @@ async def farm_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if sub == "status":
         status = await farmer.get_farm_status()
-        text = (
-            "🌱 养号状态\n\n"
-            f"做种中: {status['seeding']} 个\n"
-            f"下载中: {status['downloading']} 个\n"
-            f"总种子: {status['total_torrents']} 个\n\n"
-            f"磁盘用量: {status['disk_usage_gb']} / {status['disk_limit_gb']} GB\n"
-            f"总上传: {status['total_uploaded_gb']} GB\n"
-            f"总下载: {status['total_downloaded_gb']} GB\n\n"
-            f"自动养号: {'✅ 开启' if config.FARM_ENABLED else '❌ 关闭'}\n"
-            f"扫描间隔: 每 {config.FARM_SCAN_INTERVAL} 分钟"
-        )
-        await update.message.reply_text(text)
+        profile = await mteam.get_profile()
+        lines = [
+            "🌱 养号状态\n",
+            f"做种中: {status['seeding']} 个",
+            f"下载中: {status['downloading']} 个",
+            f"总种子: {status['total_torrents']} 个\n",
+            f"磁盘用量: {status['disk_usage_gb']} / {status['disk_limit_gb']} GB",
+        ]
+        if profile:
+            from utils import fmt_bytes
+            ratio_str = f"{profile['ratio']:.2f}" if profile['ratio'] else "∞"
+            lines.append(f"M-Team 上传: {fmt_bytes(profile['uploaded'])}")
+            lines.append(f"M-Team 下载: {fmt_bytes(profile['downloaded'])}")
+            lines.append(f"分享率: {ratio_str}")
+        lines.append("")
+        lines.append(f"自动养号: {'✅ 开启' if config.FARM_ENABLED else '❌ 关闭'}")
+        lines.append(f"扫描间隔: 每 {config.FARM_SCAN_INTERVAL} 分钟")
+        await update.message.reply_text("\n".join(lines))
 
     elif sub == "scan":
         await update.message.reply_text("🔍 正在扫描 M-Team Free 种子...")
