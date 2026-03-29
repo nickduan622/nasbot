@@ -6,13 +6,13 @@ import sys
 
 from telegram import Update, BotCommand
 from telegram.error import NetworkError, TimedOut
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, CallbackQueryHandler, CommandHandler, MessageHandler, filters
 
 import config
 from handlers.search import get_search_handler
 from handlers.status import status_cmd, ratio_cmd, downloads_cmd
 from handlers.farm import farm_cmd
-from handlers.wishlist_cmd import wishlist_cmd, wishlist_confirm_callback
+from handlers.wishlist_cmd import wishlist_cmd, wishlist_confirm_callback, wishlist_delete_callback
 from handlers.admin import update_cmd
 from scheduler import setup_scheduler
 
@@ -39,7 +39,8 @@ async def start_cmd(update: Update, context):
         "/wishlist list — 完整列表（按状态分组）\n"
         "/wishlist start movie [N] — 批量下载 N 部电影\n"
         "/wishlist start tv [N] — 批量下载 N 部剧集\n"
-        "/wishlist start <片名> — 下载指定一部\n\n"
+        "/wishlist start <片名> — 下载指定一部\n"
+        "/wishlist delete <片名> — 从队列删除\n\n"
         "📊 状态监控:\n"
         "/status — 综合状态面板\n"
         "/downloads — 当前下载详情\n"
@@ -139,8 +140,8 @@ def main():
     app.add_handler(CommandHandler("downloads", downloads_cmd))
     app.add_handler(CommandHandler("farm", farm_cmd))
     app.add_handler(CommandHandler("wishlist", wishlist_cmd))
-    from telegram.ext import CallbackQueryHandler
-    app.add_handler(CallbackQueryHandler(wishlist_confirm_callback, pattern=r"^wl_confirm_"))
+    app.add_handler(CallbackQueryHandler(wishlist_confirm_callback, pattern=r"^wl_confirm"))
+    app.add_handler(CallbackQueryHandler(wishlist_delete_callback, pattern=r"^wl_delete"))
     app.add_handler(CommandHandler("update", update_cmd))
     app.add_handler(MessageHandler(filters.ALL, any_message), group=1)
     app.add_error_handler(error_handler)

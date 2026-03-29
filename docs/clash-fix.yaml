@@ -1,0 +1,36 @@
+# Clash 配置建议：更快的健康检查 + 自动切换
+# 替换到 /volume1/docker/my-nas-pt-media/clash/config.yaml
+
+mixed-port: 7890
+allow-lan: true
+mode: rule
+log-level: warning
+
+proxy-providers:
+  boslife:
+    type: http
+    url: "你的订阅链接"
+    interval: 3600
+    path: ./providers/boslife.yaml
+    health-check:
+      enable: true
+      url: https://www.gstatic.com/generate_204
+      interval: 120
+      lazy: false
+
+proxy-groups:
+  - name: PROXY
+    type: fallback
+    use:
+      - boslife
+    url: https://www.gstatic.com/generate_204
+    interval: 120
+    tolerance: 50
+
+rules:
+  - DOMAIN-SUFFIX,telegram.org,PROXY
+  - DOMAIN-SUFFIX,t.me,PROXY
+  - DOMAIN-SUFFIX,telesco.pe,PROXY
+  - DOMAIN-SUFFIX,tg.dev,PROXY
+  - DOMAIN,api.telegram.org,PROXY
+  - MATCH,DIRECT

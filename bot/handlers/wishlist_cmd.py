@@ -74,6 +74,61 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text("类型只支持 movie 或 tv")
         return
 
+    elif sub == "delete":
+        if len(args) < 2:
+            await update.message.reply_text("用法: /wishlist delete <片名>")
+            return
+        title_query = " ".join(args[1:]).lower()
+
+        # Search both movies and tv
+        matches = []
+        for item in wishlist.get_all("movies"):
+            if title_query in item["title"].lower():
+                matches.append(("movies", item))
+        for item in wishlist.get_all("tv"):
+            if title_query in item["title"].lower():
+                matches.append(("tv", item))
+
+        # If no direct match, try Radarr/Sonarr to translate Chinese
+        if not matches:
+            results = await radarr.search_movie(title_query)
+            if results:
+                for r in results[:3]:
+                    for item in wishlist.get_all("movies"):
+                        if r["title"].lower() == item["title"].lower():
+                            matches.append(("movies", item))
+            if not matches:
+                results = await sonarr.search_series(title_query)
+                if results:
+                    for r in results[:3]:
+                        for item in wishlist.get_all("tv"):
+                            if r["title"].lower() == item["title"].lower():
+                                matches.append(("tv", item))
+
+        if not matches:
+            await update.message.reply_text(f"队列中没有匹配「{title_query}」的项目")
+            return
+
+        if len(matches) == 1:
+            mt, item = matches[0]
+            title, year = item["title"], item.get("year", 0)
+            # Store for confirmation callback
+            context.user_data["wishlist_delete_item"] = (mt, title, year)
+            from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+            await update.message.reply_text(
+                f"确认删除？\n{item['title']} ({year}) [{item.get('status', 'pending')}]",
+                reply_markup=InlineKeyboardMarkup([
+                    [InlineKeyboardButton("✅ 确认删除", callback_data="wl_delete_yes"),
+                     InlineKeyboardButton("❌ 取消", callback_data="wl_delete_no")],
+                ]),
+            )
+        else:
+            lines = [f"匹配到 {len(matches)} 个，请用更精确的名称："]
+            for mt, item in matches[:10]:
+                lines.append(f"  • {item['title']} ({item.get('year', '')}) [{mt}]")
+            await update.message.reply_text("\n".join(lines))
+        return
+
     elif sub == "summary":
         summary = wishlist.get_summary()
         m = summary["movies"]
@@ -221,7 +276,8 @@ async def wishlist_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/wishlist list tv — 查看待下载剧集\n"
             "/wishlist start movie [N] — 批量下载 N 部电影\n"
             "/wishlist start tv [N] — 批量下载 N 部剧集\n"
-            "/wishlist start <片名> — 下载队列中指定的一部"
+            "/wishlist start <片名> — 下载队列中指定的一部\n"
+            "/wishlist delete <片名> — 从队列中删除"
         )
 
 
@@ -295,6 +351,27 @@ async def _batch_start_tv(update: Update, limit: int):
             lines.append(f"  • {n}")
     lines.append(f"\n⏳ 剩余: {len(wishlist.get_pending('tv'))} 部剧集")
     await update.message.reply_text("\n".join(lines))
+
+
+async def wishlist_delete_callback(update: Update, context):
+    """Handle delete confirmation."""
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "wl_delete_no":
+        await query.edit_message_text("已取消")
+        return
+
+    item = context.user_data.get("wishlist_delete_item")
+    if not item:
+        await query.edit_message_text("⚠️ 操作已过期")
+        return
+
+    mt, title, year = item
+    if wishlist.remove(mt, title, year):
+        await query.edit_message_text(f"🗑️ 已删除: {title} ({year})")
+    else:
+        await query.edit_message_text(f"⚠️ 删除失败，可能已被移除")
 
 
 async def wishlist_confirm_callback(update: Update, context):
